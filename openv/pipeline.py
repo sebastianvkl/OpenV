@@ -175,6 +175,8 @@ class Pipeline:
         self.state["model_calls"]=self.engineer.calls
         if stop=="experiment_limit" and not any(e.status==Status.FAIL for e in evaluations):
             stop="verified_modeled_checks_with_unknowns" if any(e.status==Status.UNKNOWN for e in evaluations) else "requirements_passed"
+        if seed and self.engineer.label=="Astra" and not self.engineer.calls:
+            self.state["provider"]="External verification · no Astra repair needed"
         self.state["stop_reason"]=stop
         self.package(hardware,design,geometry)
         self.state["status"]="complete"
@@ -196,7 +198,8 @@ class Pipeline:
         for name in ("pyproject.toml","requirements-lock.txt","LICENSE"):
             shutil.copy2(root/name,source_dir/name)
         domain_files=self.domain.package(folder,hardware,design,geometry)
-        manifest={"design_id":design.id,"baseline_id":design.baseline_id,"provider":self.engineer.label,
+        manifest={"design_id":design.id,"baseline_id":design.baseline_id,"provider":self.state["provider"],
+            "model_calls":self.engineer.calls,"origin":self.state.get("origin"),
             "engineering_revision":ENGINEERING_REVISION,
             "engineering_store":self.state["engineering_store"],"gate":self.state["gate"],
             "package_kind":"manufacturing candidate", "coverage":geometry["coverage"],
