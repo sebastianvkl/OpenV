@@ -33,6 +33,9 @@ class Parameters(Record):
     tail_incidence_deg: float = Field(default=0, ge=-5, le=5)
     battery_x_m: float = Field(default=.40, ge=.12, le=.46)
     payload_x_m: float = Field(default=.22, ge=.1, le=.42)
+    esc_x_m: float = Field(default=.46, ge=.14, le=.51)
+    receiver_x_m: float = Field(default=.28, ge=.13, le=.48)
+    payload_z_m: float = Field(default=.004, ge=-.015, le=.02)
     spar_od_m: float = Field(default=.008, ge=.006, le=.016)
     spar_wall_m: float = Field(default=.001, ge=.0005, le=.002)
     skin_m: float = Field(default=.0006, ge=.0004, le=.0012)
@@ -61,6 +64,9 @@ def catalog() -> tuple[Component, ...]:
     motor_table="https://cdn.shopify.com/s/files/1/0469/7358/3518/t/3/assets/EMX-MT-0406-DES-1.jpg?v=1598528110"
     motor_drawing="https://cdn.shopify.com/s/files/1/0469/7358/3518/t/3/assets/EMX-MT-0406-DES-2.jpg?v=1598528111"
     battery = "https://www.tattuworld.com/products/tattu-classic-1300mah-3s1p-11-1v-75c-fpv-lipo-battery.html"
+    servo = "https://cdn.shopify.com/s/files/1/0469/7358/3518/t/3/assets/EMX-SV-0275-DES-1.jpg?v=1598527259"
+    receiver = "https://radiomasterrc.com/products/er6-2-4ghz-elrs-pwm-receiver"
+    propeller = "https://www.apcprop.com/product/8x4e/"
     return (
         Component(id="esc", name="Skywalker 20A V2", manufacturer="Hobbywing", part_number="30205200",
             properties={"mass_kg": prop(.019,"kg",esc), "current_a":prop(20,"A",esc),
@@ -79,14 +85,29 @@ def catalog() -> tuple[Component, ...]:
             "capacity_ah":prop(1.3,"Ah",battery),"nominal_v":prop(11.1,"V",battery),
             "length_m":prop(.072,"m",battery),"width_m":prop(.036,"m",battery),"height_m":prop(.022,"m",battery),
             "connector":prop("XT60","1",battery)}),
-        Component(id="servo", name="Four micro servos, selection pending", properties={
-            "mass_kg":prop(.009,"kg","Per-servo mass allowance","estimated"),
-            "quantity":prop(4,"1","Two ailerons, elevator and rudder","computed")}),
-        Component(id="receiver", name="PWM receiver, selection pending", properties={
-            "mass_kg":prop(.008,"kg","Receiver mass allowance","estimated")}),
-        Component(id="propeller", name="8 × 4 electric propeller allocation", properties={
-            "diameter_m":prop(.2032,"m","Design allocation; vendor and rotation pending","assumed"),
-            "mass_kg":prop(.008,"kg","Propeller mass allowance","estimated")}),
+        Component(id="servo", name="EMAX ES08MA II analog metal-gear servo", manufacturer="EMAX", part_number="0102003010", revision="ES08MAII-drawing-1598527259", properties={
+            "mass_kg":prop(.012,"kg",servo), "quantity":prop(4,"1","Two ailerons, elevator and rudder","computed"),
+            "length_m":prop(.023,"m",servo),"width_m":prop(.0115,"m",servo),"height_m":prop(.024,"m",servo),
+            "min_voltage_v":prop(4.8,"V",servo),"max_voltage_v":prop(6,"V",servo),
+            "stall_torque_nm":prop(1.6*.0980665,"N m",servo),"torque_test_voltage_v":prop(4.8,"V",servo),
+            "mount_spacing_m":prop(.0276,"m",servo)}),
+        Component(id="receiver", name="RadioMaster ER6 2.4GHz ELRS PWM receiver", manufacturer="RadioMaster", part_number="HP0157.RX-ER6", revision="ER6-2026-09-08", properties={
+            "mass_kg":prop(.0145,"kg",receiver), "length_m":prop(.043,"m",receiver),
+            "width_m":prop(.025,"m",receiver),"height_m":prop(.015,"m",receiver),
+            "min_voltage_v":prop(4.5,"V",receiver),"max_voltage_v":prop(8.4,"V",receiver),
+            "channels":prop(6,"1",receiver),"protocol":prop("2.4 GHz ExpressLRS; compatible transmitter required","1",receiver)}),
+        Component(id="propeller", name="APC 8 × 4E Thin Electric", manufacturer="APC", part_number="LP08040E", revision="LP08040E-2026-09-08", properties={
+            "diameter_m":prop(.2032,"m",propeller),"pitch_m":prop(.1016,"m",propeller),
+            "mass_kg":prop(.01304,"kg",propeller),"hub_diameter_m":prop(.02032,"m",propeller),
+            "hub_thickness_m":prop(.00889,"m",propeller),"bore_m":prop(.00635,"m",propeller),
+            "adapter":prop("LPAR06E rings included; installed shaft adapter and retention must be confirmed","1",propeller)}),
+        *tuple(Component(id=f"tube-{od}",name=f"Easy Composites {od} × {od-2} mm woven carbon tube, 1 m stock", manufacturer="Easy Composites",part_number=f"CFT-WF-{od}-{od-2}-1",revision="2026-09-08",properties={
+            "outer_diameter_m":prop(od/1000,"m",source),"wall_m":prop(.001,"m",source),
+            "length_m":prop(1.,"m",source),"linear_mass_kg_m":prop(linear_mass,"kg/m",source),
+            "axial_modulus_pa":prop(64e9,"Pa",source),
+            "catalog_role":prop("Raw stock alternative; selected only when CAD section matches","1","OpenV stock assignment","computed")})
+            for od,linear_mass,source in [(10,.0456,"https://www.easycomposites.co.uk/10mm-8mm-woven-finish-carbon-fibre-tube"),
+                                         (12,.0536,"https://www.easycomposites.co.uk/12mm-10mm-woven-finish-carbon-fibre-tube")]),
     )
 
 
@@ -107,6 +128,13 @@ def system(mission: Mission) -> HardwareSystem:
         req("esc-cells", "Allocated battery cell count within ESC specification", "electrical", "cell_compatibility", "==", 1,"1","Sourced ESC cell limits; declared 3S allocation","integration","power"),
         req("print-size", "Every printed part fits 256 mm build envelope", "cad", "max_print_dimension_m", "<=", .256,"m","Axis-aligned part bounds; orientation recorded, not a slicing check","component","airframe"),
         req("cad-valid", "All exported custom CAD solids are valid", "cad", "invalid_solids", "==", 0,"1","OpenCascade topology check only","component","airframe"),
+        req("component-fit", "Installed component envelopes do not intersect other modeled solids", "installation", "component_collision_count", "==", 0,"1","OpenCascade intersection volume; rigid bodies, declared numerical tolerance only","integration","airframe"),
+        req("prop-clearance", "Rigid propeller swept envelope clears modeled aircraft by 2 mm", "installation", "propeller_clearance_mm", ">=", 2,"mm","Full rotational envelope; no blade flex or wire routes","integration","power"),
+        req("component-insertion", "Internal components have a clear declared insertion envelope", "installation", "insertion_collision_count", "==", 0,"1","Continuous vertical box sweep with wing, spar, saddle and hatches absent","integration","airframe"),
+        req("control-voltage", "ESC BEC nominal voltage is within servo and receiver ratings", "control-power", "bec_voltage_compatible", "==", 1,"1","Manufacturer voltage limits only","integration","controls"),
+        req("control-channels", "Receiver has enough independent PWM outputs", "control-power", "channel_margin", ">=", 0,"1","Two ailerons, elevator, rudder, throttle","integration","controls"),
+        req("tube-stock", "Spar section and cut lengths match sourced tube stock", "tube-stock", "stock_compatible", "==", 1,"1","10/8 or 12/10 mm woven tube, 1 m stock; dimensions only, not strength certification","component","wing-spar"),
+        req("control-current", "BEC supplies simultaneous control-system demand", "control-power", "bec_current_margin_a", ">=", 0,"A","Requires servo stall/transient, receiver and installed BEC current evidence","integration","controls"),
         req("endurance", "Cruise endurance meets mission", "propulsion", "endurance_min", ">=", mission.endurance_min,"min","Requires sourced prop/motor map, energy budget and reserve"),
         req("assembly", "Assembly sequence, tool access and fit are verified", "assembly", "verified", "==", 1,"1","Requires geometry and access checks","integration","airframe"),
         req("full-structure", "Airframe, joints and controls survive design loads", "airframe-load-test", "verified", "==", 1,"1","Spar calculation alone does not establish this claim"),
@@ -118,6 +146,13 @@ def system(mission: Mission) -> HardwareSystem:
                       "airframe":["wing","wing-spar","fuselage","tail","boom"]},
         requirements=requirements, components=catalog(), scenario=mission.model_dump(),
         interfaces=(
+            Interface(id="installation",endpoints=("airframe","power","controls","payload"),kind="mechanical",
+                definition={"revision":"albatross-installation/2","frame":"x aft, y right, z up; SI meters",
+                    "body_clearance_m":.0005,"battery_tray_padding_m":.001,
+                    "assembly_order":["pod and tail","internal components with wing removed","wing and spar saddle","hatches","propeller last"],
+                    "retention":"Slotted trays and straps; adhesive/fastener strength and installed tolerances UNKNOWN",
+                    "control_mapping":{"CH1":"right aileron","CH2":"elevator","CH3":"ESC throttle + BEC","CH4":"rudder","CH5":"left aileron","CH6":"spare"}},
+                requirement_ids=("component-fit","prop-clearance","component-insertion","assembly")),
             Interface(id="battery-esc",endpoints=("battery","esc"),kind="electrical",
                 definition={"cells":3,"nominal_v":11.1,"connector":"UNKNOWN"},requirement_ids=("esc-cells",)),
             Interface(id="wing-spar",endpoints=("wing","wing-spar","fuselage"),kind="mechanical",
@@ -237,7 +272,7 @@ def structure_output(inputs):
         raw={"stress_pa":stress,"tip_deflection_m":deflection,"root_moment_nm":moment,"second_moment_m4":inertia,
              "spanwise":points,"material":material,"total_lift_n":total_lift},
         assumptions=("Uniform distributed load on two independent cantilever semispans; ideal root restraint.",
-                     "Assumed tube properties; joints, buckling, torsion, fatigue, skin and controls are not covered."))
+                     "Elastic modulus uses the declared material record (sourced for matched stock); strength allowable remains assumed. Joints, buckling, torsion, fatigue, skin and controls are not covered."))
 
 
 def electrical_output(inputs):
@@ -255,3 +290,27 @@ def methods():
         Method("aero",f"aerosandbox/{aerosandbox.__version__};openv/1",("geometry","mass_properties","scenario"),aero_output),
         Method("structure","euler-bernoulli/1",("geometry","mass_properties","scenario","materials"),structure_output),
         Method("electrical","cell-rating/1",("catalog",),electrical_output)]
+
+
+def tube_stock(components, od, wall):
+    for component in components:
+        props=component.properties if hasattr(component,"properties") else component['properties']
+        def value(key):
+            p=props.get(key)
+            if p is None:return None
+            return p.value if hasattr(p,"value") else p['value']
+        diameter=value('outer_diameter_m');thickness=value('wall_m')
+        if diameter is not None and thickness is not None and abs(diameter-od)<1e-9 and abs(thickness-wall)<1e-9:
+            return component
+    return None
+
+
+def materials_for(components, parameters):
+    import copy
+    materials=copy.deepcopy(MATERIALS)
+    stock=tube_stock(components,parameters['spar_od_m'],parameters['spar_wall_m'])
+    if stock:
+        prop=stock.properties['axial_modulus_pa']
+        materials['carbon'].update(E_pa=prop.value,modulus_source=prop.source,
+            modulus_quality=prop.quality,note='Axial elastic modulus from selected woven tube; bending allowable remains assumed. Joints, torsion and compression failure require validation.')
+    return materials

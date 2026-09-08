@@ -123,6 +123,8 @@ async def admit_run(request:RunRequest):
             p=Parameters.model_validate({**version["parameters"],**request.parameter_changes})
             m=Mission.model_validate({**parent["system"]["scenario"],**request.mission_changes})
         except ValidationError as exc:raise HTTPException(422,str(exc)) from exc
+        if any(k not in version["parameters"] for k in request.parameter_changes):
+            raise HTTPException(422,"This historical design does not define the requested parameter; start a new mission for the updated installation layout.")
         actual_parameters={k:v for k,v in request.parameter_changes.items() if version["parameters"][k]!=v}
         actual_mission={k:v for k,v in request.mission_changes.items() if parent["system"]["scenario"][k]!=v}
         baseline_changed=bool(actual_mission)

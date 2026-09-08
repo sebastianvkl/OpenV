@@ -51,6 +51,15 @@ Do not pretend a change is proven until the external verifier reruns. Battery/pa
 placement affect CG; increasing span changes mass, bending and stability; tail sizing
 changes neutral point and mass. Consider coupled constraints and avoid repeated changes.
 Geometry frame: meters, x aft from nose, y right, z up. Wing LE x=.28m, tail LE x=.88m.
+For installation revision albatross-installation/2, ESC and receiver x positions and
+payload z are editable. The ESC tray extends 25.5 mm on each side of esc_x_m;
+the battery is 72 mm long at battery_x_m. Internal components insert vertically
+with wing and hatches absent: keep them within the 100..500 mm hatch opening.
+Servo/receiver/propeller are sourced ES08MA II / ER6 / APC 8x4E. Sourced spar
+stock options are 10 or 12 mm outside diameter, each with 1 mm wall and 1 m cut
+stock length; other sizes fail procurement checks. Use the actual catalog/input
+record, which may instead be a legacy baseline. Do not assume the new catalog
+or installation checks exist on a historical branch.
 Prefer small well-reasoned changes. Do not fabricate a failed first design for theater.
 """
 
@@ -125,7 +134,13 @@ This is for testing without a model account, not an Astra demonstration.
     def redesign(self, context):
         failures = {e["requirement_id"] for e in context["evaluations"] if e["status"]=="FAIL"}
         p=context["design"]["parameters"]
-        if "stability-min" in failures:
+        if failures & {"component-fit","component-insertion"}:
+            changes={"battery_x_m":.36,"receiver_x_m":.28,"esc_x_m":.46,"payload_z_m":.004}
+            why="Separate the internal component/tray envelopes and align them with the open hatch insertion corridor."
+        elif "tube-stock" in failures:
+            changes={"spar_od_m":.012,"spar_wall_m":.001}
+            why="Use the sourced 12/10 mm stock section; rerun mass, bending and clearance checks."
+        elif "stability-min" in failures:
             changes={"battery_x_m":max(.12,p["battery_x_m"]-.10)}
             why="Move battery forward to move CG ahead of the computed neutral point."
         elif "stability-max" in failures:

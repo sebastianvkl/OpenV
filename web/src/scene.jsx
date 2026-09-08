@@ -10,6 +10,7 @@ import {
 } from "@react-three/drei";
 import * as THREE from "three";
 import FlightWorld from "./flight-world.jsx";
+import { InstallationScene } from "./installation-scene.jsx";
 
 export const point = ([x, y, z]) => [y, z, 0.45 - x];
 const offsets = (part) =>
@@ -123,6 +124,7 @@ function Part({
   onSelect,
   stepGroups,
   analysis,
+  failed,
 }) {
   const ref = useRef();
   const texture = useMemo(
@@ -183,24 +185,27 @@ function Part({
   const faded =
     (inside && shell) ||
     analysis === "airflow" ||
+    (analysis === "installation" && shell && !failed) ||
     (analysis === "structure" && part.process !== "cut-carbon");
   const inactive = stepGroups && !stepGroups.includes(part.group);
   const color =
     selected === part.id
       ? "#df9050"
-      : part.id === "propeller"
-        ? "#cc8747"
-        : part.id === "motor"
-          ? "#a7aeb0"
-          : part.id === "battery"
-            ? "#384a3c"
-            : part.id.startsWith("servo")
-              ? "#2b343c"
-              : part.id.startsWith("aileron") ||
-                  part.id.startsWith("elevator") ||
-                  part.id === "rudder"
-                ? "#637769"
-                : colors[part.process] || part.color;
+      : failed
+        ? "#fa7961"
+        : part.id === "propeller"
+          ? "#cc8747"
+          : part.id === "motor"
+            ? "#a7aeb0"
+            : part.id === "battery"
+              ? "#384a3c"
+              : part.id.startsWith("servo")
+                ? "#2b343c"
+                : part.id.startsWith("aileron") ||
+                    part.id.startsWith("elevator") ||
+                    part.id === "rudder"
+                  ? "#637769"
+                  : colors[part.process] || part.color;
   return (
     <mesh
       ref={ref}
@@ -214,7 +219,10 @@ function Part({
     >
       <meshPhysicalMaterial
         color={
-          part.process === "purchase" && texture && selected !== part.id
+          part.process === "purchase" &&
+          texture &&
+          selected !== part.id &&
+          !failed
             ? "#ffffff"
             : color
         }
@@ -604,6 +612,7 @@ export default function Scene({
   wiring,
   environment,
   flow,
+  installation,
   flightPlaying,
   flightCamera,
   flightWorld,
@@ -611,6 +620,14 @@ export default function Scene({
   flightReset,
 }) {
   const controls = useRef();
+  const collided = new Set(
+    installation?.available
+      ? [
+          ...installation.static.collisions,
+          ...installation.insertions.flatMap((row) => row.collisions),
+        ].flatMap((row) => row.parts)
+      : [],
+  );
   const sim = mode === "Simulate";
   const dark = sim && environment !== "flight";
   const flight = sim && environment === "flight";
@@ -715,6 +732,9 @@ export default function Scene({
               {...{ part, explode, inside, onSelect, stepGroups }}
               selected={selected?.id}
               analysis={sim ? environment : null}
+              failed={
+                sim && environment === "installation" && collided.has(part.id)
+              }
             />
           ))
         )}
@@ -722,7 +742,9 @@ export default function Scene({
         {sim && !flight && (
           <>
             <Setting environment={environment} />
-            {environment === "airflow" ? (
+            {environment === "installation" ? (
+              <InstallationScene data={installation} geometry={geometry} />
+            ) : environment === "airflow" ? (
               <Flow flow={flow} />
             ) : environment === "structure" ? (
               <Structure raw={structure} parameters={geometry.parameters} />

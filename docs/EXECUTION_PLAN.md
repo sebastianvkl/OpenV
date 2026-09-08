@@ -318,3 +318,15 @@ The user approved implementation with "Go ahead". Proceed through P0 autonomousl
 - [x] Link exact selected motor, battery and ESC to their product storefronts; preserve UNKNOWN selection for unresolved purchased parts.
 - [x] Add an accessible selector for hidden parts, pause viewer motion during inspection, and expose custom-part stock details and version-matched CAD downloads.
 - [x] Check actual mesh selection, sourced specs, pending parts, CAD download responses, flight pause and desktop/mobile layout with browser automation; production build succeeds.
+
+### Two-hour extension — one build candidate (user approved)
+
+Focus on the existing motor-glider rather than another domain or integration.
+
+1. Select the remaining servo, receiver and propeller from primary manufacturer data; freeze the new catalog and installation interfaces in a new baseline. Preserve every historical run.
+2. Add independent installed-component interference, continuous propeller swept-envelope clearance, straight-line insertion-envelope, BEC-voltage and channel-allocation checks. Add bad geometry/electrical and invalidation regressions before publishing new verdicts.
+3. Generate component mounts/retention features, explicit installation positions, connection schedule and assembly dependencies from the same state. Keep unproven joints, controls, processes and physical performance UNKNOWN.
+4. Run a new real Astra/Dalus build with these checks; expose actual failure locations, evidence and repairs in the viewer and package. Keep the deployed site runnable between milestones.
+5. Use remaining time for solver-driven flight response and a stronger visible before/after engineering story, after the installation vertical slice is working. A prescribed animation never closes flight verification.
+
+Extension checkpoint: 37 regression tests pass, including overlap versus contact, hollow-solid intersection, continuous insertion obstruction, voltage/source gaps, exact tube sections/cut lengths and evidence invalidation. Local fixture `installation-offline-002` exercised two real CAD/solver repair iterations (placement and tube section), reaching 16 PASS / 0 FAIL / 6 UNKNOWN. All 68 package hashes matched. This is a fixture acceptance check, not the new real Astra acceptance. Desktop/mobile Fit & access, sourced links and assembly tools/hardware were checked in the browser.

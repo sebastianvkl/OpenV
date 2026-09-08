@@ -57,8 +57,8 @@ class AircraftDomain:
 
     def methods(self):
         from openv import aircraft,cad
-        from openv import propulsion
-        return aircraft.methods()+[cad.method(),Method("propulsion","uiuc-measured-propeller-and-energy/1",
+        from openv import propulsion, installation
+        return aircraft.methods()+installation.methods()+[cad.method(),Method("propulsion","uiuc-measured-propeller-and-energy/1",
             ("geometry","mass_properties","scenario","catalog","propeller_profile"),propulsion.output)]
 
     def define(self,proposal,mission_text):
@@ -80,21 +80,23 @@ class AircraftDomain:
 
     def build(self,design,hardware,directory):
         from openv.cad import build
-        return build(design.parameters,hardware.scenario,directory,components=hardware.components)
+        return build(design.parameters,hardware.scenario,directory,components=hardware.components,interfaces=hardware.interfaces)
 
     def context(self,hardware,design,artifacts):
-        from openv.aircraft import MATERIALS
+        from openv.aircraft import materials_for
         from openv.propulsion import profile
         import aerosandbox
         density=float(aerosandbox.Atmosphere(altitude=hardware.scenario["altitude_m"]).density())
         return {"geometry":design.parameters,"mass_properties":artifacts["mass_properties"],
-            "scenario":hardware.scenario,"materials":MATERIALS,
+            "scenario":hardware.scenario,"materials":materials_for(hardware.components,design.parameters),
             "catalog":[c.model_dump() for c in hardware.components],"cad_checks":artifacts["checks"],
+            "interfaces":[i.model_dump() for i in hardware.interfaces],
+            "installation_checks":artifacts.get("installation_checks",{"available":False}),
             "propeller_profile":profile(hardware.scenario["cruise_mps"],density)}
 
     def pending_context(self,context,candidate):
         return {**context,"geometry":candidate.parameters,"mass_properties":{"pending_design":candidate.id},
-                "cad_checks":{"pending_design":candidate.id}}
+                "cad_checks":{"pending_design":candidate.id},"installation_checks":{"pending_design":candidate.id}}
 
 
 def get_domain(name="motor-glider/1") -> Domain:

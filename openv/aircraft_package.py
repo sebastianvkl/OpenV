@@ -1,5 +1,6 @@
 """Manufacturing and assembly outputs owned by the aircraft domain."""
 import csv
+import json
 
 
 def write_package(folder,hardware,design,geometry):
@@ -26,7 +27,7 @@ from openv.cad import build
 root=Path(__file__).resolve().parent
 parameters=json.loads((root/"design-parameters.json").read_text())
 system=json.loads((root/"system.json").read_text())
-build(parameters,system["scenario"],root/"regenerated",components=system["components"])
+build(parameters,system["scenario"],root/"regenerated",components=system["components"],interfaces=system.get("interfaces",[]))
 ''')
     sequence=[
         {'title':'Prepare the wing modules','groups':['wing','structure'],'action':'Inspect printed shells and cut spar stock to the recorded lengths. Dry-fit seams and spar alignment before bonding.'},
@@ -35,7 +36,63 @@ build(parameters,system["scenario"],root/"regenerated",components=system["compon
         {'title':'Place battery and mission payload','groups':['power','payload'],'action':'Use the versioned positions, provide positive retention, then measure the actual installed CG.'},
         {'title':'Measure before release','groups':['wing','tail','fuselage','power','controls','payload'],'action':'Complete structural, propulsion, control/access and manufacturing checks. Flight validation requires physical test evidence.'},
     ]
-    for step in sequence:step['verification_status']='UNKNOWN'
+    installation=geometry.get('installation')
+    if installation:
+        sequence=[
+            {'title':'Inspect and prepare fabricated parts','groups':['wing','fuselage','tail','structure'],
+             'action':'Slice the individual shells in their intended print orientation, calibrate foamed-PLA density, and inspect walls. Cut the two spar lengths and boom from the recorded stock dimensions. Dry-fit all parts before bonding.',
+             'tools':['Calipers','Square','Fine-tooth composite saw with dust extraction','Slicer'],
+             'checks':['Measured stock dimensions','Print coupon density','No cracks or delamination'],'requirement_ids':['print-size','cad-valid']},
+            {'title':'Join the pod and fit component supports','groups':['fuselage','structure','power','payload','controls'],
+             'action':'Fit the two internal seam collars across pod joints. Bond the pod-conforming tray feet and servo cradles to their mating surfaces. Leave both hatches and the complete wing/saddle assembly off.',
+             'tools':['Alignment jig','Compatible adhesive and clamps'],
+             'hardware':['Pod seam collars × 2','Slotted battery, payload, ESC and receiver trays','Servo cradles × 4'],
+             'checks':['Dry-fit before adhesive','Bond area, adhesive process and cure remain unverified'],'requirement_ids':['assembly','full-structure']},
+            {'title':'Install battery, payload, receiver and ESC','groups':['power','payload','controls','fuselage'],
+             'action':'Lower each component vertically into its versioned position with wing, spar, saddle and hatches removed. Route 10 mm straps through the tray slots. Keep the propeller off and the battery disconnected during wiring.',
+             'tools':['Strap threading tool','Calipers'],
+             'hardware':['10 mm hook-and-loop straps, cut to measured route','Soft battery/payload padding'],
+             'checks':['Inspect continuous insertion-envelope evidence','Confirm retention and lead clearance physically'],'requirement_ids':['component-fit','component-insertion']},
+            {'title':'Fit wing spars and mounting saddle','groups':['wing','structure'],
+             'action':'Dry-fit both spar halves into the saddle sockets, then slide the ribbed wing modules over the spars. Align the root and segment seams. The socket geometry defines the fit; it does not prove the center joint load capacity.',
+             'tools':['Incidence gauge','Straightedge','Bonding jig'],
+             'hardware':['Two cut spar halves','Saddle with center sockets','Wing modules'],
+             'checks':['Check tube and socket diameters','Verify dihedral and incidence','Load-test the center joint before flight'],'requirement_ids':['spar','deflection','full-structure']},
+            {'title':'Connect controls and the radio system','groups':['controls','tail','power'],
+             'action':'Install the four ES08MA II servos and follow the channel schedule. Fit hinges, horns and linkages after checking horn travel and loaded torque. Bind the ER6 to a compatible 2.4 GHz ExpressLRS transmitter; verify control direction and throttle failsafe with the propeller removed.',
+             'tools':['Servo tester','Multimeter','Compatible transmitter'],
+             'hardware':['ES08MA II × 4','ER6 receiver','Servo extensions; lengths from installed routes'],
+             'checks':['Nominal BEC voltage and channel-count evidence','Measure simultaneous servo current','Horns, linkage geometry, failsafe and range check remain open'],'requirement_ids':['control-voltage','control-channels','control-current','assembly']},
+            {'title':'Complete propulsion mounting','groups':['power','structure'],
+             'action':'Dry-fit the plywood pylon and firewall against the manufacturer mounting drawing. Resolve M3 screw engagement and the shaft adapter against delivered hardware before tightening. Fit the APC propeller last; its marked face and rotation must produce forward aircraft thrust in this pusher installation.',
+             'tools':['Hex drivers','Calipers','Propeller balancer','Thrust/current test stand'],
+             'hardware':['EMAX GT2215','Four M3 mounting screws: engagement pending','APC LP08040E and adapter rings'],
+             'checks':['Full rigid propeller swept-envelope evidence','Verify screw engagement, adapter retention, thrust direction and current physically'],'requirement_ids':['prop-clearance','endurance','full-structure']},
+            {'title':'Retain covers and measure the installed aircraft','groups':['fuselage','power','payload','wing','tail'],
+             'action':'Fit and retain the access covers, then weigh the complete aircraft and measure CG with the actual payload. Compare measurements against this design before re-running verification. Remove any temporary assembly fixtures.',
+             'tools':['Scale','CG balance fixture','Calipers'],
+             'hardware':['Cover retention tape or straps; adhesion/load test pending'],
+             'checks':['Actual mass and CG','Control travel, wire chafe and secure retention'],'requirement_ids':['mass','assembly']},
+            {'title':'Close the remaining release evidence','groups':['wing','tail','fuselage','power','controls','payload'],
+             'action':'Complete joint/control load tests, propulsion/endurance measurements, print-process validation and radio checks. Physical flight remains UNKNOWN until measured. A CAD or clearance PASS alone does not release this aircraft.',
+             'tools':['Wing load-test rig','Power analyzer','Flight-test instrumentation'],
+             'checks':['Resolve every mandatory FAIL/UNKNOWN before the corresponding release'],'requirement_ids':['full-structure','control-current','endurance','flight']},
+        ]
+    verification_path=folder/'verification.json'
+    verification=json.loads(verification_path.read_text()) if verification_path.exists() else {}
+    evaluations={e['requirement_id']:e for e in verification.get('evaluations',[])}
+    for index,step in enumerate(sequence):
+        step['id']=f'assembly-{index+1}'
+        step['depends_on']=[f'assembly-{index}'] if index else []
+        step['part_ids']=[p['id'] for p in geometry['parts'] if p.get('group') in step['groups']]
+        step['verification_status']='UNKNOWN'  # full step includes unmodeled assembly actions
+        step['evidence_checks']=[{'requirement_id':id,**evaluations.get(id,{'status':'UNKNOWN','evidence_ids':[]})} for id in step.get('requirement_ids',[])]
+    if installation:
+        write_json(folder/'connection-schedule.json',{'design_id':design.id,'status':'UNKNOWN',
+            'channels':installation['control_mapping'],'power':'3S battery → ESC; ESC 5 V BEC → receiver bus → four servos',
+            'open_items':['Battery/ESC connector termination','Servo stall/transient current','Wire gauges, lengths and routing','Failsafe and range validation']})
+        write_json(folder/'installation-checks.json',geometry.get('installation_checks',{}))
+
     write_json(folder/'assembly.json',{'design_id':design.id,'status':'UNKNOWN','steps':sequence})
     notes='''# Fabrication candidate — release blocked
 
@@ -59,5 +116,7 @@ This is an unresolved collection of parts, not a purchasing specification.
 ## Open design items
 
 '''+ '\n'.join(f'- {item}' for item in geometry['coverage']['open_items'])
+    if installation:
+        notes += "\n\n## Installation revision\n\n" + installation['revision'] + "\n\nThe assembly.json steps contain versioned parts, tools, installation order and links to evaluated requirements. Slotted trays, pod seam collars and spar sockets are actual CAD parts. Their presence does not validate joints or retention loads. See installation-checks.json for exact checked collision pairs and the declared continuous insertion envelopes. connection-schedule.json records the five control channels and remaining electrical integration work.\n"
     (folder/'FABRICATION.md').write_text(notes)
     return {'assembly_file':f'{design.id}/assembly.json'}

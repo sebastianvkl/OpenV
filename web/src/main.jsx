@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import Scene from "./scene.jsx";
 import ComponentDetails from "./component-details.jsx";
+import { InstallationSummary } from "./installation-scene.jsx";
 
 import {
   ArrowDown,
@@ -408,6 +409,8 @@ function App() {
       ? flow
       : null;
   const stepInfo = assembly?.steps[step];
+  const installation = evidence.find((e) => e.method === "installation")?.output
+    .raw;
   const submit = async (offline = false) => {
     setBusy(true);
     setError("");
@@ -550,6 +553,7 @@ function App() {
                 wiring,
                 environment,
                 flow: validFlow,
+                installation,
                 flightPlaying,
                 flightCamera,
                 flightWorld,
@@ -897,6 +901,7 @@ function App() {
                 {[
                   ["airflow", "Airflow"],
                   ["structure", "Load bench"],
+                  ["installation", "Fit & access"],
                   ["flight", "Flight"],
                 ].map(([id, name]) => (
                   <button
@@ -1008,7 +1013,14 @@ function App() {
                   {number(run?.system?.scenario?.load_factor, 1)} g structural
                   load
                 </b>
-                {environment === "airflow" ? (
+                {environment === "installation" ? (
+                  <InstallationSummary
+                    data={installation}
+                    geometry={geometry}
+                    onSelect={setSelected}
+                    onEvidence={showEvidence}
+                  />
+                ) : environment === "airflow" ? (
                   <>
                     <p>
                       {validFlow?.status === "COMPUTED"
@@ -1092,25 +1104,36 @@ function App() {
               </div>
               <div className="metric">
                 <span>
-                  {environment === "structure"
-                    ? "Spar tip deflection"
-                    : "Longitudinal static margin"}
+                  {environment === "installation"
+                    ? "Propeller clearance"
+                    : environment === "structure"
+                      ? "Spar tip deflection"
+                      : "Longitudinal static margin"}
                 </span>
                 <strong>
                   {number(
-                    environment === "structure"
-                      ? structure?.tip_deflection_m * 1000
-                      : aero?.static_margin * 100,
+                    environment === "installation"
+                      ? installation?.propeller?.min_clearance_mm
+                      : environment === "structure"
+                        ? structure?.tip_deflection_m * 1000
+                        : aero?.static_margin * 100,
                     1,
                   )}
-                  <small>{environment === "structure" ? "mm" : "% MAC"}</small>
+                  <small>
+                    {environment === "structure" ||
+                    environment === "installation"
+                      ? "mm"
+                      : "% MAC"}
+                  </small>
                 </strong>
                 <button
                   onClick={() =>
                     showEvidence(
-                      environment === "structure"
-                        ? "deflection"
-                        : "stability-min",
+                      environment === "installation"
+                        ? "prop-clearance"
+                        : environment === "structure"
+                          ? "deflection"
+                          : "stability-min",
                     )
                   }
                 >
@@ -1131,13 +1154,35 @@ function App() {
                   <b>{number(structure?.tip_deflection_m * 1000, 1)} mm</b>
                 </div>
               </div>
-              <Chart aero={aero} />
+              {environment !== "installation" && <Chart aero={aero} />}
               {version && (
                 <div className="experiment-controls">
                   <div className="panel-heading">
                     <span>WHAT IF YOU CHANGE…</span>
                   </div>
                   {[
+                    ...(geometry?.installation
+                      ? [
+                          [
+                            "esc_x_m",
+                            "ESC position",
+                            0.14,
+                            0.51,
+                            0.005,
+                            "m",
+                            version.parameters.esc_x_m,
+                          ],
+                          [
+                            "receiver_x_m",
+                            "Receiver position",
+                            0.13,
+                            0.48,
+                            0.005,
+                            "m",
+                            version.parameters.receiver_x_m,
+                          ],
+                        ]
+                      : []),
                     [
                       "cruise_mps",
                       "Airspeed",
@@ -1264,6 +1309,30 @@ function App() {
                 {stepInfo?.action ||
                   "Finish a design run to inspect its assembly sequence."}
               </p>
+              {stepInfo?.tools && (
+                <div className="assembly-detail">
+                  <span>TOOLS</span>
+                  <p>{stepInfo.tools.join(" · ")}</p>
+                </div>
+              )}
+              {stepInfo?.hardware && (
+                <div className="assembly-detail">
+                  <span>HARDWARE</span>
+                  {stepInfo.hardware.map((item) => (
+                    <p key={item}>{item}</p>
+                  ))}
+                </div>
+              )}
+              {stepInfo?.evidence_checks?.map((check) => (
+                <button
+                  className="assembly-evidence"
+                  key={check.requirement_id}
+                  onClick={() => showEvidence(check.requirement_id)}
+                >
+                  <span>{human(check.requirement_id)}</span>
+                  <Badge status={check.status} />
+                </button>
+              ))}
               <div className="assembly-controls">
                 <button
                   aria-label="Previous assembly step"
@@ -1295,8 +1364,9 @@ function App() {
                 </button>
               </div>
               <p className="tiny">
-                This sequence explains the candidate. Collision, access and
-                order checks remain open.
+                {assembly?.steps?.some((s) => s.evidence_checks?.length)
+                  ? "Scoped checks link to actual evidence. Full assembly, retention and tool access remain UNKNOWN."
+                  : "This sequence explains the candidate. Collision, access and order checks remain open."}
               </p>
             </>
           )}

@@ -10,11 +10,11 @@ import json
 import math
 from pathlib import Path
 
-from openv.aircraft import MATERIALS, Parameters, catalog, wing_sections
+from openv.aircraft import MATERIALS, Parameters, catalog, wing_sections, tube_stock, materials_for
 from openv.core import Measurement, Method, ToolOutput, digest
 
 
-def build(parameters: dict, mission: dict, output_dir: Path, components=None) -> dict:
+def build(parameters: dict, mission: dict, output_dir: Path, components=None, interfaces=None) -> dict:
     import aerosandbox as asb
     import numpy as np
     from build123d import (Box, CenterOf, Compound, Cylinder, Location, Plane, Solid,
@@ -25,6 +25,10 @@ def build(parameters: dict, mission: dict, output_dir: Path, components=None) ->
     cad_dir = output_dir / "cad"
     cad_dir.mkdir(exist_ok=True)
     parts, shapes = [], []
+    interface_records=[i.model_dump() if hasattr(i,"model_dump") else i for i in (interfaces or [])]
+    installation=next((i["definition"] for i in interface_records if i["id"]=="installation"),None)
+    installed=installation is not None and installation.get("revision")=="albatross-installation/2"
+
     from openv.core import Component
     sourced_parts={c.id:c for c in (Component.model_validate(item) for item in (catalog() if components is None else components))}
 
@@ -34,6 +38,17 @@ def build(parameters: dict, mission: dict, output_dir: Path, components=None) ->
         if value.unit!="m":raise ValueError(f"{component}.{key} must use meters")
         return float(value.value)
 
+    if installed:
+        servo_dims=[dimension("servo",key,default)*1000 for key,default in [("length_m",.023),("width_m",.0115),("height_m",.024)]]
+        fraction=.66
+        local_chord=p["chord_m"]*(1-(1-p["taper"])*fraction)
+        servo_x=.28+.02*fraction+.53*local_chord
+        servo_z=.11+.05*p["span_m"]*fraction/2-.008*local_chord-servo_dims[2]/2000
+        servo_positions=[(servo_x,-p["span_m"]*fraction/2,servo_z),(servo_x,p["span_m"]*fraction/2,servo_z),(.46,-.021,.012),(.46,.021,.012)]
+    else:
+        servo_dims=[23,12,24]
+        servo_positions=[(.4,-p["span_m"]*.3,.12),(.4,p["span_m"]*.3,.12),(.46,-.018,0),(.46,.018,0)]
+
     def add(id, label, shape, group, process="print", mass_kg=None, color="#e2e9df", note="", stock=None):
         shape.label = id
         shape_valid = bool(shape.is_valid)
@@ -42,9 +57,15 @@ def build(parameters: dict, mission: dict, output_dir: Path, components=None) ->
         centroid = [float(v)/1000 for v in shape.center(CenterOf.MASS)]
         density = 650. if process=="cut-plywood" else MATERIALS["carbon" if process == "cut-carbon" else "printed"]["density_kg_m3"]
         mass = float(shape.volume)*1e-9*density if mass_kg is None else mass_kg
-        component=sourced_parts.get("servo" if id.startswith("servo-") else id)
+        component=sourced_parts.get("servo" if id in ("servo-1","servo-2","servo-3","servo-4") else id)
         if component and "mass_kg" in component.properties and process=="purchase":
             mass=float(component.properties["mass_kg"].value)
+        stock_mass=False
+        if installed and process=="cut-carbon" and stock:
+            component=tube_stock(sourced_parts.values(),stock['outer_diameter_mm']/1000,stock['wall_mm']/1000)
+            if component:
+                mass=component.properties['linear_mass_kg_m'].value*stock['length_mm']/1000
+                stock_mass=True
         verts, faces = shape.tessellate(.5,.15)
         mesh={"positions":[float(n)/1000 for v in verts for n in v],
               "indices":[int(n) for face in faces for n in face]}
@@ -53,7 +74,7 @@ def build(parameters: dict, mission: dict, output_dir: Path, components=None) ->
         elif process.startswith("cut-"):
             export_step(shape,str(cad_dir/f"{id}.step"))
         parts.append({"id":id,"name":label,"group":group,"process":process,"mass_kg":mass,
-            "mass_quality":component.properties["mass_kg"].quality if component and process=="purchase" and "mass_kg" in component.properties else "computed with assumed material density" if mass_kg is None else "allocated; see source catalog",
+            "mass_quality":"computed from sourced linear stock mass" if stock_mass else component.properties["mass_kg"].quality if component and process=="purchase" and "mass_kg" in component.properties else "computed with assumed material density" if mass_kg is None else "allocated; see source catalog",
             "dimensions_m":dimensions,"centroid_m":centroid,"color":color,"valid":shape_valid,
             "volume_m3":float(shape.volume)*1e-9,"mesh":mesh,"note":note,
             "stock":stock or {},
@@ -111,6 +132,14 @@ def build(parameters: dict, mission: dict, output_dir: Path, components=None) ->
                     bore=Solid.make_cylinder((p["spar_od_m"]+.0003)*500,float(np.linalg.norm(vector))+4,
                         Plane(origin=tuple(a*1000-vector/np.linalg.norm(vector)*2),z_dir=tuple(vector)))
                     shell=shell-bore
+                    if installed and index==0:
+                        center_clearance=Solid.make_cylinder((p["spar_od_m"]+.0056)*500,80,
+                            Plane(origin=tuple(a*1000-vector/np.linalg.norm(vector)*2),z_dir=tuple(vector)))
+                        shell=shell-center_clearance
+                if installed and not is_tail:
+                    for sx,sy,sz in servo_positions[:2]:
+                        if min(ends[0][0][1],ends[1][0][1]) <= sy+(servo_dims[1]+1)/2000 and max(ends[0][0][1],ends[1][0][1]) >= sy-(servo_dims[1]+1)/2000:
+                            shell=shell-Box(servo_dims[0]+1,servo_dims[1]+1,servo_dims[2]+2).moved(Location((sx*1000,sy*1000,sz*1000)))
                 # Split physical control surfaces with a declared 0.6 mm hinge
                 # gap. The aerodynamic model's hinge datum is 75% chord.
                 if is_tail or index>=count//2+1:
@@ -172,9 +201,15 @@ def build(parameters: dict, mission: dict, output_dir: Path, components=None) ->
         segment=pod & cutter
         add(f"pod-{i+1}",f"Fuselage shell {i+1}",segment,"fuselage",color="#eef0e5",
             note="Candidate shell with top access opening. Seam joint and local reinforcement checks remain open.")
+    if installed:
+        for index,(x,radius) in enumerate(((220,53.8),(440,47.13)),1):
+            collar=(inner & Box(14,140,140).moved(Location((x,0,0))))-Solid.make_cylinder(radius-3,18,Plane(origin=(x-9,0,0),z_dir=(1,0,0)))
+            collar=collar-hatch_mask
+            add(f"pod-collar-{index}",f"Pod seam bonding collar {index}",collar,"fuselage",
+                note="14 mm internal backing at pod seam, shaped to nominal inner shell. Bond both halves; adhesive selection, tolerances and joint loads require validation.")
     add("boom","Carbon tail boom",tube([.54,0,.025],[.99,0,.07],.012,.001),"structure","cut-carbon",color="#263b33",
         stock={"length_mm":math.hypot(450,45),"outer_diameter_mm":12,"wall_mm":1})
-    pylon_profile=Wire.make_polygon([(500,-3,35),(602,-3,35),(569,-3,208),(551,-3,208)],close=True)
+    pylon_profile=Wire.make_polygon([(500,-3,35),(590,-3,35),(545,-3,195),(545,-3,220),(539,-3,220)] if installed else [(500,-3,35),(602,-3,35),(569,-3,208),(551,-3,208)],close=True)
     from build123d import Face
     pylon=Solid.extrude(Face(pylon_profile),(0,6,0))
     add("motor-pylon","6 mm plywood motor pylon",pylon,"power","cut-plywood",
@@ -191,20 +226,77 @@ def build(parameters: dict, mission: dict, output_dir: Path, components=None) ->
     add("motor-firewall","Motor firewall candidate",firewall,"power","cut-plywood",color="#b59b70",
         note="Manufacturer GT2215-family 19/16 mm cross pattern; 3.2 mm clearance holes and 6 mm center relief are design choices. Confirm delivered variant, screw engagement and loads." if sourced_mount else "Legacy provisional 16 mm square pattern; vendor pattern unconfirmed.",stock={"thickness_mm":4})
     saddle=(Box(82,86,65)-Box(76,80,70)).moved(Location((342,0,75)))-outer
-    add("wing-saddle","Wing mounting saddle",saddle,"structure",note="Connects pod to elevated wing; center spar restraint and fastening need validation.",color="#71946b")
-    add("battery-tray","Battery tray candidate",Box(105,43,2).moved(Location((p["battery_x_m"]*1000,0,-24))),"power")
-    add("payload-tray","Payload tray candidate",Box(65,45,2).moved(Location((p["payload_x_m"]*1000,0,17))),"payload")
-    # COTS geometry is an explicitly labeled envelope, not a fabricated vendor model.
-    add("battery","Tattu 1300mAh 3S battery",Box(72,36,22).moved(Location((p["battery_x_m"]*1000,0,-10))),"power","purchase",.122,"#c88149","TAA13003S75X6: manufacturer mass/dimensions. Wire/connector routing still requires clearance checks.")
-    add("payload","Mission payload envelope",Box(45,35,30).moved(Location((p["payload_x_m"]*1000,0,35))),"payload","provided",mission["payload_kg"],"#50685e","Payload envelope is an allocation; user hardware not measured.")
-    add("esc","Skywalker 20A V2 envelope",Box(45,23,8).moved(Location((420,0,-20))),"power","purchase",.019,"#344a41","Manufacturer dimensions; connector lead envelopes not included.")
+    if installed:
+        (root,cr),(tip,ct)=wing_sections(p)
+        root=np.array(root);tip=np.array(tip)
+        root[0]+=.30*cr;root[2]+=.015*cr;tip[0]+=.30*ct;tip[2]+=.015*ct
+        for sign in (-1,1):
+            end=root+(tip-root)*(.075/(p["span_m"]/2));end[1]*=sign
+            direction=end-root;direction=direction/np.linalg.norm(direction)
+            socket=tube(root-direction*.004,end,p["spar_od_m"]+.0053,.0025)
+            saddle=saddle+socket
+    add("wing-saddle","Wing mounting saddle with spar sockets" if installed else "Wing mounting saddle",saddle,"structure",note="Connects pod to elevated wing; center spar restraint and fastening need validation.",color="#71946b")
+    battery_dims=[dimension("battery",key,default)*1000 for key,default in [("length_m",.072),("width_m",.036),("height_m",.022)]]
+    esc_dims=[dimension("esc",key,default)*1000 for key,default in [("length_m",.045),("width_m",.023),("height_m",.008)]]
+    receiver_dims=[dimension("receiver",key,default)*1000 for key,default in [("length_m",.030),("width_m",.018),("height_m",.008)]]
+    payload_z=p["payload_z_m"] if installed else .035
+    esc_x=p["esc_x_m"] if installed else .420
+    receiver_x=p["receiver_x_m"] if installed else .330
+    esc_z=-.012 if installed else -.020
+    receiver_z=-.022 if installed else -.020
+
+    def tray(id,name,x,z,length,width,group):
+        if not installed:
+            add(id,name,Box(length,width,2).moved(Location((x*1000,0,z*1000))),group)
+            return
+        # 2 mm base, shallow side lips, and two 12 x 2 mm strap passages.
+        base=Box(length,width+8,2)
+        for dx in (-length*.30,length*.30):
+            for dy in (-width/2-1.5,width/2+1.5):
+                base=base-Box(12,2,4).moved(Location((dx,dy,0)))
+        for dy in (-width/2-3,width/2+3):
+            base=base+Box(length,2,5).moved(Location((0,dy,1.5)))
+        base=base.moved(Location((x*1000,0,z*1000)))
+        # Legs terminate at the nominal inner pod surface, providing real bonding
+        # lands instead of a tray floating in empty space. Adhesive is unmodeled.
+        for dx in (-length*.30,length*.30):
+            for dy in (-width*.35,width*.35):
+                leg_top=z*1000
+                leg=Box(5,4,leg_top+90).moved(Location((x*1000+dx,dy,(leg_top-90)/2))) & inner
+                base=base+leg
+        add(id,name,base,group,
+            note="2 mm base, pod-conforming support legs, guide lips and 12 × 2 mm strap passages. Route 10 mm hook-and-loop straps through passages. Bond to pod; bond/strap strength and print tolerances UNKNOWN.")
+    tray("battery-tray","Slotted battery retention tray",p["battery_x_m"],-.011-battery_dims[2]/2000 if installed else -.024,battery_dims[0]+12,battery_dims[1]+2,"power")
+    tray("payload-tray","Slotted payload retention tray",p["payload_x_m"],payload_z-.016 if installed else .017,65,37 if installed else 45,"payload")
+    if installed:
+        tray("receiver-tray","Receiver mounting tray",receiver_x,receiver_z-receiver_dims[2]/2000-.001,receiver_dims[0]+6,receiver_dims[1]+2,"controls")
+        tray("esc-tray","ESC mounting tray",esc_x,esc_z-esc_dims[2]/2000-.001,esc_dims[0]+6,esc_dims[1]+2,"power")
+    add("battery","Tattu 1300mAh 3S battery",Box(*battery_dims).moved(Location((p["battery_x_m"]*1000,0,-10))),"power","purchase",.122,"#c88149","Frozen manufacturer body dimensions; leads and connector routing remain open.")
+    add("payload","Mission payload envelope",Box(45,35,30).moved(Location((p["payload_x_m"]*1000,0,payload_z*1000))),"payload","provided",mission["payload_kg"],"#50685e","Payload envelope is an allocation; user hardware not measured.")
+    add("esc","Skywalker 20A V2 envelope",Box(*esc_dims).moved(Location((esc_x*1000,0,esc_z*1000))),"power","purchase",.019,"#344a41","Manufacturer dimensions; connector lead envelopes not included.")
     add("motor","EMAX GT2215 motor envelope",Cylinder(dimension("motor","diameter_m",.028)*500,
         dimension("motor","body_length_m",.032)*1000,rotation=(0,90,0)).moved(Location((566,0,220))),
-        "power","purchase",.060,"#59655b","Motor body envelope from the frozen component catalog. Shafts, leads, adapters and installed CG still need detailed checks.")
-    add("propeller","8-inch propeller envelope",Box(5,203.2,12).moved(Location((589,0,220))),"power","purchase",.008,"#273d31","Simplified two-blade envelope; not propeller manufacturing geometry.")
-    add("receiver","Receiver envelope",Box(30,18,8).moved(Location((330,0,-20))),"controls","purchase",.008,"#28453a")
-    for i,(x,y,z) in enumerate([(.4,-p["span_m"]*.3,.12),(.4,p["span_m"]*.3,.12),(.46,-.018,0),(.46,.018,0)]):
-        add(f"servo-{i+1}",f"Control servo {i+1}",Box(23,12,24).moved(Location((x*1000,y*1000,z*1000))),"controls","purchase",.009,"#55745e","Envelope and mass allowance; mount, horn, linkage and torque verification pending.")
+        "power","purchase",.060,"#59655b","Frozen motor body envelope. Shaft adapter, screw engagement and support loads require validation.")
+    prop_thickness=dimension("propeller","hub_thickness_m",.005)*1000
+    prop_diameter=dimension("propeller","diameter_m",.2032)*1000
+    prop_shape=Box(prop_thickness,prop_diameter,12)
+    if installed:
+        hub=Solid.make_cylinder(dimension("propeller","hub_diameter_m",.02032)*500,prop_thickness,
+            Plane(origin=(-prop_thickness/2,0,0),z_dir=(1,0,0)))
+        prop_shape=prop_shape+hub
+    add("propeller","APC 8 × 4E propeller envelope" if installed else "8-inch propeller envelope",prop_shape.moved(Location((594 if installed else 589,0,220))),"power","purchase",.008,"#273d31","Simplified rigid blade/hub envelope; no blade flex or installed adapter definition. Manufacturer face must face forward in pusher installation; thrust direction and retention require bench validation.")
+    add("receiver","RadioMaster ER6 receiver envelope" if installed else "Receiver envelope",Box(*receiver_dims).moved(Location((receiver_x*1000,0,receiver_z*1000))),"controls","purchase",.008,"#28453a","Compatible 2.4 GHz ExpressLRS transmitter required; antenna routing and radio range remain unverified.")
+    for i,(x,y,z) in enumerate(servo_positions):
+        if installed:
+            # An open-top cradle with floor and side walls. Ear/horn geometry is
+            # still excluded, explicitly: these are body fit checks only.
+            sx,sy,sz=servo_dims
+            cradle=Box(sx+4,sy+4,sz+1)-Box(sx+1,sy+1,sz+3).moved(Location((0,0,2)))
+            add(f"servo-mount-{i+1}",f"Servo {i+1} body cradle",cradle.moved(Location((x*1000,y*1000,z*1000-.5))),"controls",
+                note="0.5 mm nominal body clearance per side; open insertion top. Bond cradle, retain servo by removable band. Ears, horn sweep, band and joint strength remain UNKNOWN.")
+        add(f"servo-{i+1}",f"EMAX ES08MA II servo {i+1}" if installed else f"Control servo {i+1}",Box(*servo_dims).moved(Location((x*1000,y*1000,z*1000))),"controls","purchase",.009,"#55745e","Body envelope from frozen catalog; mounting ears, horn and wire lead require detailed clearance verification.")
+    from openv.installation import analyze
+    installation_checks=analyze(dict(zip((part["id"] for part in parts),shapes)),parts,installation)
     # A mass allowance is explicit and separate from CAD, never silently omitted.
     allowance={"id":"installation-allowance","name":"Wiring, hinges, linkages, fasteners and adhesive allowance",
                "mass_kg":.055,"centroid_m":[.4,0,.04],"quality":"estimated","note":"Detailed selections and installed geometry remain UNKNOWN."}
@@ -220,11 +312,12 @@ def build(parameters: dict, mission: dict, output_dir: Path, components=None) ->
     roundtrip=roundtrip_checks(parts,imported)
     max_print=max(max(part["dimensions_m"]) for part in parts if part["process"]=="print")
     metadata={"units":{"cad":"mm","mesh":"m","engineering":"SI"},"parameters":p,"parts":parts,
-        "mass_properties":{"mass_kg":total,"cg_m":cg,"parts":[{k:v for k,v in part.items() if k not in ("mesh",)} for part in parts],"allowances":[allowance],"materials":MATERIALS},
+        "installation_checks":installation_checks,"installation":installation,
+        "mass_properties":{"mass_kg":total,"cg_m":cg,"parts":[{k:v for k,v in part.items() if k not in ("mesh",)} for part in parts],"allowances":[allowance],"materials":materials_for(sourced_parts.values(),p)},
         "checks":{"max_print_dimension_m":max_print,"invalid_solids":sum(not part["valid"] for part in parts),
                   "step_volume_relative_error":volume_error,**roundtrip},
         "coverage":{"complete_manufacturing_definition":False,"assembly_verified":False,
-            "open_items":["Control hinge, horn and linkage selection/travel","Fastener and joint details","Battery/hatch positive retention","Delivered motor variant, screw engagement and support loads","Supplier tube and remaining COTS selections","Collision/access/sequence verification","Process calibration and slicing"]}}
+            "open_items":["Control hinge, horn and linkage selection/travel","Fastener and joint details","Strap, hatch and bonded support retention loads","Delivered motor variant, screw engagement and support loads","Spar cut length/stock match; installed prop adapter and fasteners","Collision/access/sequence verification","Process calibration and slicing"]}}
     (output_dir/"geometry.json").write_text(json.dumps(metadata,allow_nan=False))
     (output_dir/"design-parameters.json").write_text(json.dumps(p,indent=2))
     return metadata

@@ -1626,3 +1626,56 @@ code {
   overflow-wrap: anywhere;
   margin-top: 16px;
 }
+.installation-label {
+  font: 8px monospace;
+  color: #d2e8ec;
+  white-space: nowrap;
+  background: #18323ecc;
+  padding: 4px 6px;
+  border-radius: 3px;
+}
+.collision-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px;
+  border: 1px solid #d59c82;
+  color: #925331;
+  font-size: 9px;
+  text-align: left;
+  border-radius: 3px;
+}
+.collision-row span {
+  font-size: 8px;
+}
+.installation-summary .text-link {
+  margin-top: 12px;
+}
+.assembly-detail {
+  margin: 14px 0;
+}
+.assembly-detail > span {
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: #7a866c;
+}
+.assembly-detail p {
+  font-size: 9px;
+  line-height: 1.5;
+}
+.assembly-evidence {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 9px;
+  margin: 8px 0;
+  gap: 8px;
+  text-align: left;
+}
+.environment-tabs {
+  flex-wrap: wrap;
+}

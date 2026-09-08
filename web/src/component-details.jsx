@@ -3,6 +3,23 @@ import { ArrowUpRight, Download, ExternalLink, X } from "lucide-react";
 
 // Storefront navigation only. Engineering properties come from the frozen CAD catalog.
 const stores = {
+  "EMAX:0102003010": {
+    name: "EMAX",
+    url: "https://shop.emaxmodel.com/collections/hot-products/products/emax-es08ma-ii-12g-mini-metal-gear-analog-servo-for-rc-model-robot-pwm-servo",
+  },
+  "RadioMaster:HP0157.RX-ER6": {
+    name: "RadioMaster",
+    url: "https://radiomasterrc.com/products/er6-2-4ghz-elrs-pwm-receiver",
+  },
+  "APC:LP08040E": { name: "APC", url: "https://www.apcprop.com/product/8x4e/" },
+  "Easy Composites:CFT-WF-10-8-1": {
+    name: "Easy Composites",
+    url: "https://www.easycomposites.co.uk/10mm-8mm-woven-finish-carbon-fibre-tube",
+  },
+  "Easy Composites:CFT-WF-12-10-1": {
+    name: "Easy Composites",
+    url: "https://www.easycomposites.co.uk/12mm-10mm-woven-finish-carbon-fibre-tube",
+  },
   "EMAX:EMX-MT-0409": {
     name: "EMAX",
     url: "https://emax-usa.com/collections/diy/products/emx-mt-0409-gt2215-1180kv",
@@ -17,6 +34,14 @@ const stores = {
   },
 };
 const labels = {
+  min_voltage_v: "Minimum voltage",
+  max_voltage_v: "Maximum voltage",
+  stall_torque_nm: "Stall torque",
+  torque_test_voltage_v: "Torque test voltage",
+  channels: "PWM outputs",
+  mount_spacing_m: "Mount spacing",
+  linear_mass_kg_m: "Mass per metre",
+  axial_modulus_pa: "Axial modulus",
   kv: "Motor KV",
   mass_kg: "Component mass",
   cells: "Cell count",
@@ -49,6 +74,8 @@ function formatProperty({ value, unit }) {
     return `${value ?? "Unknown"}${unit && unit !== "1" ? ` ${unit}` : ""}`;
   if (unit === "m") return `${numeric(value * 1000)} mm`;
   if (unit === "kg") return `${numeric(value * 1000)} g`;
+  if (unit === "Pa") return `${numeric(value / 1e9)} GPa`;
+  if (unit === "kg/m") return `${numeric(value * 1000)} g/m`;
   if (unit === "Ah") return `${numeric(value * 1000)} mAh`;
   return `${numeric(value)}${unit && unit !== "1" ? ` ${unit}` : ""}`;
 }
