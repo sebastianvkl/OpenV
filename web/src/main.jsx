@@ -390,7 +390,9 @@ function VTrace({ stage, onClick }) {
 function App() {
   const [config, setConfig] = useState({});
   const [runs, setRuns] = useState([]);
-  const [runId, setRunId] = useState("");
+  const [runId, setRunId] = useState(
+    () => new URLSearchParams(window.location.search).get("run") || "",
+  );
   const [run, setRun] = useState(null);
   const [geometry, setGeometry] = useState(null);
   const [versionId, setVersionId] = useState("");
@@ -413,6 +415,12 @@ function App() {
   const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [perturbation, setPerturbation] = useState({});
+  useEffect(() => {
+    if (!runId) return;
+    const address = new URL(window.location.href);
+    address.searchParams.set("run", runId);
+    window.history.replaceState(null, "", address);
+  }, [runId]);
   useEffect(() => {
     let cancelled = false;
     const tick = async () => {
@@ -704,7 +712,11 @@ function App() {
           <VTrace stage={run?.stage} onClick={() => showEvidence(null)} />
           {run && (
             <div className="run-note">
-              <span className="tiny-label">THIS RUN</span>
+              <span className="tiny-label">
+                {isRunning
+                  ? "LIVE ENGINEERING RUN"
+                  : "RECORDED ENGINEERING RUN"}
+              </span>
               <p>{run.provider}</p>
               <small>
                 {isRunning ? (
