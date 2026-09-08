@@ -58,6 +58,7 @@ def catalog() -> tuple[Component, ...]:
         return Property(value=value, unit=unit, quality=quality, source=source)
     esc = "https://www.hobbywing.com/uploads/file/20240717/003cfdbd5f9fad6ac356f2396c8103b3.pdf"
     motor = "https://shop.emax-usa.com/collections/wing-uav/products/emx-mt-0409-gt2215-1180kv"
+    battery = "https://www.tattuworld.com/products/tattu-classic-1300mah-3s1p-11-1v-75c-fpv-lipo-battery.html"
     return (
         Component(id="esc", name="Skywalker 20A V2", manufacturer="Hobbywing", part_number="30205200",
             properties={"mass_kg": prop(.019,"kg",esc), "current_a":prop(20,"A",esc),
@@ -67,11 +68,11 @@ def catalog() -> tuple[Component, ...]:
         Component(id="motor", name="EMAX GT2215 1180KV", manufacturer="EMAX", part_number="EMX-MT-0409",
             properties={"kv":prop(1180,"rpm/V",motor), "mass_kg":prop(.060,"kg","Pending exact motor datasheet","estimated"),
                         "diameter_m":prop(.028,"m","Envelope pending vendor drawing","estimated")}),
-        Component(id="battery", name="3S 1300 mAh LiPo allocation", properties={
-            "mass_kg":prop(.120,"kg","Pending exact battery selection","estimated"),
-            "cells":prop(3,"1","Design allocation","assumed"),
-            "capacity_ah":prop(1.3,"Ah","Pending vendor selection and discharge characterization","assumed"),
-            "nominal_v":prop(11.1,"V","3S nominal design allocation","assumed")}),
+        Component(id="battery", name="Tattu Classic 1300mAh 3S 75C", manufacturer="Tattu", part_number="TAA13003S75X6",properties={
+            "mass_kg":prop(.122,"kg",battery),"cells":prop(3,"1",battery),
+            "capacity_ah":prop(1.3,"Ah",battery),"nominal_v":prop(11.1,"V",battery),
+            "length_m":prop(.072,"m",battery),"width_m":prop(.036,"m",battery),"height_m":prop(.022,"m",battery),
+            "connector":prop("XT60","1",battery)}),
         Component(id="servo", name="Four micro servos, selection pending", properties={
             "mass_kg":prop(.009,"kg","Per-servo mass allowance","estimated"),
             "quantity":prop(4,"1","Two ailerons, elevator and rudder","computed")}),
@@ -248,4 +249,3 @@ def methods():
         Method("aero",f"aerosandbox/{aerosandbox.__version__};openv/1",("geometry","mass_properties","scenario"),aero_output),
         Method("structure","euler-bernoulli/1",("geometry","mass_properties","scenario","materials"),structure_output),
         Method("electrical","cell-rating/1",("catalog",),electrical_output)]
-

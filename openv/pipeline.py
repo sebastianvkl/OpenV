@@ -9,7 +9,6 @@ import time
 import zipfile
 from pathlib import Path
 
-from openv import aircraft, cad
 from openv.core import (Contract, Evidence, Experiment, Requirement, Status,
                         VerificationEngine, digest, gate, uid)
 
@@ -22,14 +21,16 @@ def write_json(path: Path, data):
 
 
 class Pipeline:
-    def __init__(self, directory: Path, engineer, store=None):
+    def __init__(self, directory: Path, engineer, store=None, domain=None):
         self.directory, self.engineer, self.store = directory,engineer,store
         self.directory.mkdir(parents=True,exist_ok=True)
         self.state={"id":directory.name,"status":"running","stage":"mission","provider":engineer.label,
             "engineering_store":"local fixture" if store is None else "Dalus MCP",
             "events":[],"versions":[],"experiments":[],"evaluations":[],"evidence":[],"stop_reason":None}
         self.started=time.monotonic()
-        self.engine=VerificationEngine(aircraft.methods()+[cad.method()])
+        from openv.domains import get_domain
+        self.domain=domain or get_domain()
+        self.engine=VerificationEngine(self.domain.methods())
 
     def event(self, kind, message, **details):
         self.state["stage"]=kind
@@ -42,14 +43,12 @@ class Pipeline:
     def context(self, hardware, design, geometry):
         # Derived mass properties embed each input/source and material assumption.
         # A source, placement or geometry change therefore propagates transitively.
-        return {"geometry":design.parameters,"mass_properties":geometry["mass_properties"],
-            "scenario":hardware.scenario,"materials":aircraft.MATERIALS,
-            "catalog":[c.model_dump() for c in hardware.components],"cad_checks":geometry["checks"]}
+        return self.domain.context(hardware,design,geometry)
 
     def geometry(self, design, mission):
         self.event("design","Generating parametric CAD and CAD-derived mass properties",design_id=design.id)
         directory=self.directory/design.id
-        geometry=cad.build(design.parameters,mission.model_dump(),directory)
+        geometry=self.domain.build(design,mission,directory)
         write_json(directory/"design.json",design.model_dump())
         self.state["versions"].append({**design.model_dump(),"geometry_file":f"{design.id}/geometry.json"})
         self.state["current_design_id"]=design.id
@@ -76,6 +75,8 @@ class Pipeline:
             return self._run(mission_text,max_experiments)
         except Exception as exc:
             self.state["status"]="error"
+            self.state["gate"]="UNKNOWN"
+            if self.store:self.state["dalus"]=self.store.public_ref()
             self.state["stop_reason"]=f"{type(exc).__name__}: {exc}"
             self.event("error","Execution stopped; existing evidence remains version-bound")
             raise
@@ -88,19 +89,12 @@ class Pipeline:
             self.state.update(status="complete",stop_reason="unsupported_mission",gate="UNKNOWN")
             self.event("complete","Requested mission is outside current domain coverage")
             return self.state
-        # Retain the user's exact intent even if the model paraphrases its text.
-        definition=definition.model_copy(update={"mission":definition.mission.model_copy(update={"text":mission_text})})
-        hardware=aircraft.system(definition.mission)
-        # Preserve every uncovered clause as an explicit requirement with no fabricated method.
-        extra=tuple(Requirement(id=f"uncovered-{i+1}",statement=clause,level="mission",owner="aircraft",
-            contracts=(),origin="uncovered user clause") for i,clause in enumerate(definition.uncovered_clauses))
-        hardware=hardware.model_copy(update={"requirements":hardware.requirements+extra})
+        hardware,design=self.domain.define(definition,mission_text)
         self.state["system"]=hardware.model_dump()
-        design=aircraft.initial_design(hardware,definition.parameters)
         if self.store:
             self.state["dalus"]=self.store.create_system(hardware,design)
         self.event("requirements","Mission baseline and verification contracts frozen",baseline_id=hardware.baseline_id)
-        geometry=self.geometry(design,definition.mission)
+        geometry=self.geometry(design,hardware.scenario)
         context=self.context(hardware,design,geometry)
         evidence,evaluations=self.verify(hardware,design,context)
         stop="experiment_limit"
@@ -119,7 +113,7 @@ class Pipeline:
                 proposal=self.engineer.redesign(proposal_context)
                 experiment_id=uid("experiment")
                 try:
-                    candidate=aircraft.patched(design,proposal.changes,experiment_id)
+                    candidate=self.domain.patch(design,proposal.changes,experiment_id)
                     break
                 except ValueError as exc:
                     self.event("proposal-rejected",str(exc))
@@ -128,27 +122,29 @@ class Pipeline:
                         raise ValueError("Proposer exhausted schema/engineering repair attempts") from exc
             # Publish invalidation before invoking CAD/solvers. All geometry-dependent
             # consumers are stale here; unrelated electrical evidence remains applicable.
-            affected={name for name,m in self.engine.methods.items() if "geometry" in m.dependencies or "mass_properties" in m.dependencies}
-            invalidated=tuple(e.id for e in evidence if e.method in affected)
+            pending_context=self.domain.pending_context(context,candidate)
+            pending_evaluations=self.engine.evaluate(hardware.requirements,pending_context,evidence)
+            invalidated=tuple(dict.fromkeys(id for evaluation in pending_evaluations for id in evaluation.stale_evidence_ids))
             before=tuple(e.id for e in evidence)
             exp=Experiment(id=experiment_id,problem=proposal.problem,hypothesis=proposal.hypothesis,
                 change=proposal.changes,expected_effect=proposal.expected_effect,from_design=design.id,to_design=candidate.id,
                 before_evidence=before,invalidated_evidence=invalidated)
             self.state["experiments"].append(exp.model_dump())
             self.state["current_design_id"]=candidate.id
-            self.state["evaluations"]=[{**e.model_dump(),"status":"UNKNOWN","stale_evidence_ids":list(e.evidence_ids),"reasons":["Design changed; dependent evidence needs re-verification"]}
-                if set(e.evidence_ids)&set(invalidated) else e.model_dump() for e in evaluations]
+            self.state["evaluations"]=[e.model_dump() for e in pending_evaluations]
             self.state["gate"]="UNKNOWN"
             self.event("invalidated","Candidate committed; dependent evidence is stale",experiment=exp.model_dump())
             if self.store:
                 self.store.record_experiment(hardware,design,candidate,exp,self.state["evaluations"])
-            geometry=self.geometry(candidate,definition.mission)
+            geometry=self.geometry(candidate,hardware.scenario)
             new_context=self.context(hardware,candidate,geometry)
             new_evidence,new_evaluations=self.verify(hardware,candidate,new_context,evidence)
             actual={e.requirement_id:{"before":next(old.status.value for old in evaluations if old.requirement_id==e.requirement_id),
                                      "after":e.status.value,"reasons":list(e.reasons)} for e in new_evaluations}
             exp=exp.model_copy(update={"after_evidence":tuple(e.id for e in new_evidence),"actual_effect":actual})
             self.state["experiments"][-1]=exp.model_dump()
+            if self.store:
+                self.store.complete_experiment(exp)
             design,context,evidence,evaluations=candidate,new_context,new_evidence,new_evaluations
             self.event("experiment-complete","Experiment recorded with actual results",experiment_id=exp.id)
         self.state["model_calls"]=self.engineer.calls
@@ -166,6 +162,21 @@ class Pipeline:
             writer=csv.DictWriter(stream,fieldnames=list(bom[0]));writer.writeheader();writer.writerows(bom)
         write_json(folder/"system.json",hardware.model_dump())
         write_json(folder/"experiments.json",self.state["experiments"])
+        source_dir=folder/"source"
+        source_dir.mkdir(exist_ok=True)
+        root=Path(__file__).resolve().parent.parent
+        shutil.copytree(root/"openv",source_dir/"openv",ignore=shutil.ignore_patterns("__pycache__","*.pyc"),dirs_exist_ok=True)
+        for name in ("pyproject.toml","requirements-lock.txt","LICENSE"):
+            shutil.copy2(root/name,source_dir/name)
+        (folder/"regenerate.py").write_text('''"""After installing ./source, regenerate this exact candidate geometry."""
+import json
+from pathlib import Path
+from openv.cad import build
+root=Path(__file__).resolve().parent
+parameters=json.loads((root/"design-parameters.json").read_text())
+system=json.loads((root/"system.json").read_text())
+build(parameters,system["scenario"],root/"regenerated")
+''')
         sequence=[
             {"title":"Prepare the wing modules","groups":["wing","structure"],"action":"Inspect printed shells and cut spar stock to CAD-derived lengths. Dry-fit seams and spar alignment before bonding."},
             {"title":"Assemble the fuselage and tail","groups":["fuselage","tail","structure"],"action":"Dry-fit pod modules, boom and tail. Confirm the alignment datums and design incidence."},

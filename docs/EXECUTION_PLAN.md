@@ -7,10 +7,10 @@ Updated: 2026-09-08. **Implementation approved by the user ("Go ahead"). Target:
 - [x] Approval received; initialized project, dependencies and Git at the workspace root.
 - [x] Core verdict/evidence tests pass; fixture end-to-end repair generated CAD, invalidated evidence and reverified an 8-to-10 mm spar change.
 - [x] Local React/Three.js viewer built and inspected with actual CAD meshes and evidence.
-- [x] Dalus OAuth authenticated and MCP tools discovered; engineering mapping is in progress.
+- [x] Dalus OAuth and typed MCP engineering mapping work end-to-end: requirements, variables/components, delegated interfaces, test cases, evidence references, invalidation and experiments with actual effects.
 - [ ] Astra credentials, live model run, complete manufacturing definition and public backend deployment remain outstanding.
 
-The current 28-part CAD export is a candidate with explicitly listed design gaps; it is not the complete manufacturing package milestone.
+The current 37-part CAD export is a candidate with explicitly listed design gaps; it is not the complete manufacturing package milestone.
 
 ## Pre-implementation review - 11:04 a.m. Pacific
 

@@ -21,6 +21,7 @@ ARTIFACTS=Path(os.environ.get("OPENV_ARTIFACTS",str(ROOT/"artifacts"))).resolve(
 ARTIFACTS.mkdir(parents=True,exist_ok=True)
 active=None
 background_tasks=set()
+admission_lock=asyncio.Lock()
 
 
 @asynccontextmanager
@@ -54,7 +55,7 @@ class RunRequest(BaseModel):
 def config():
     return {"model":os.environ.get("OPENV_MODEL","gpt-6-astra"),
         "astra_ready":bool(os.environ.get("OPENAI_API_KEY")),
-        "dalus_authorized":(ROOT/".openv/dalus-tokens.json").exists(),
+        "dalus_authorized":(Path(os.environ.get("OPENV_AUTH_DIR",str(ROOT/".openv")))/"dalus-tokens.json").exists(),
         "store":os.environ.get("OPENV_STORE","local"),
         "fixtures_enabled":os.environ.get("OPENV_ALLOW_FIXTURES")=="1",
         "busy":active is not None and active.returncode is None}
@@ -82,6 +83,11 @@ def run(run_id:str):
 
 @app.post("/api/runs",status_code=202)
 async def create_run(request:RunRequest):
+    async with admission_lock:
+        return await admit_run(request)
+
+
+async def admit_run(request:RunRequest):
     global active
     if active and active.returncode is None:
         raise HTTPException(409,"An engineering run is active. Please wait for it to finish.")
@@ -133,4 +139,3 @@ def artifact(run_id:str,relative:str):
 DIST=ROOT/"web/dist"
 if DIST.exists():
     app.mount("/",StaticFiles(directory=DIST,html=True),name="web")
-

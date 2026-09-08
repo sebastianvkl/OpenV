@@ -10,10 +10,13 @@ import json
 import math
 from datetime import datetime, timezone
 from enum import StrEnum
+from pathlib import Path
 from typing import Any, Callable, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
+
+CORE_REVISION=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:16]
 
 
 def uid(prefix: str) -> str:
@@ -168,7 +171,11 @@ class Method:
         return {key: context[key] for key in self.dependencies}
 
     def fingerprint(self, context: dict[str, Any], contracts: tuple[Contract, ...]) -> str:
-        return digest({"method": self.name, "version": self.version, "graph": 1,
+        import inspect
+        module=inspect.getmodule(self.run)
+        source=Path(module.__file__) if module and getattr(module,"__file__",None) else None
+        source_hash=hashlib.sha256(source.read_bytes()).hexdigest() if source and source.is_file() else "unavailable"
+        return digest({"method": self.name, "version": self.version, "graph": 1,"core_revision":CORE_REVISION,"method_source_hash":source_hash,
                        "inputs": self.inputs(context),
                        "contracts": [c.model_dump() for c in contracts if c.method == self.name]})
 
@@ -251,4 +258,3 @@ def gate(requirements: tuple[Requirement, ...], evaluations: tuple[Evaluation, .
     if Status.FAIL in states:
         return Status.FAIL
     return Status.PASS if states and all(s == Status.PASS for s in states) else Status.UNKNOWN
-

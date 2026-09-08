@@ -37,7 +37,7 @@ No model can write verification status, change the verifier, or relax a frozen r
 python -m openv.dalus login
 ```
 
-Open the displayed OAuth URL. Tokens are stored in ignored `.openv/` files with restricted permissions. The client discovers the actual tools at `https://app.dalus.io/api/mcp`. Engineering writes must use discovered MCP capabilities; no REST/database bypass is provided. Authenticated engineering record mapping is in progress and is not yet wired into CLI runs.
+Open the displayed OAuth URL. Tokens are stored in ignored `.openv/` files with restricted permissions. The client discovers the actual tools at `https://app.dalus.io/api/mcp`. Engineering writes must use discovered MCP capabilities; no REST/database bypass is provided. Set `OPENV_STORE=dalus` and `DALUS_TEAM_ID` in `.env` to use the live store. Requirements, components/variables, interfaces, test cases, evidence references and experiments are written through MCP and read back. An incomplete or mismatched remote commit blocks progress. `OPENV_STORE=local` is the explicit account-free fallback.
 
 ## What exists now
 
@@ -47,7 +47,7 @@ Open the displayed OAuth URL. Tokens are stored in ignored `.openv/` files with 
 - AeroSandbox trim/static stability, idealized spar bending, cell-allocation compatibility, solid validity and print-envelope checks.
 - Explore / Simulate / Assemble viewer, historical design selection, raw evidence, experiment log and candidate-package downloads.
 
-The current CAD package is **a candidate, not a complete manufacturing release**. Controls/hinges/linkages, joints, exact vendor selections, access checks and process calibration still need work. Endurance lacks a sourced propulsion map. The beam model uses declared material assumptions and does not prove full-airframe strength. Physical flight validation remains UNKNOWN. See `geometry.json`, `manifest.json`, and `FABRICATION.md` in each package for its exact coverage.
+The current CAD package is **a candidate, not a complete manufacturing release**. Hinge/linkage selections, fastening/joints, exact remaining vendor selections, access checks and process calibration still need work. The candidate includes split control surfaces, spar bores, ribs, access hatches and mounting candidates. APC manufacturer-predicted propeller data supports a drag-dependent power estimate; missing motor/ESC efficiency and battery discharge evidence still keep endurance UNKNOWN. The beam model uses declared material assumptions and does not prove full-airframe strength. Physical flight validation remains UNKNOWN. See `geometry.json`, `manifest.json`, and `FABRICATION.md` in each package for its exact coverage.
 
 ## Architecture
 

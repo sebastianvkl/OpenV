@@ -10,7 +10,7 @@ import json
 import math
 from pathlib import Path
 
-from openv.aircraft import MATERIALS, Parameters, wing_sections
+from openv.aircraft import MATERIALS, Parameters, catalog, wing_sections
 from openv.core import Measurement, Method, ToolOutput, digest
 
 
@@ -25,6 +25,7 @@ def build(parameters: dict, mission: dict, output_dir: Path) -> dict:
     cad_dir = output_dir / "cad"
     cad_dir.mkdir(exist_ok=True)
     parts, shapes = [], []
+    sourced_parts={c.id:c for c in catalog()}
 
     def add(id, label, shape, group, process="print", mass_kg=None, color="#e2e9df", note=""):
         shape.label = id
@@ -32,8 +33,11 @@ def build(parameters: dict, mission: dict, output_dir: Path) -> dict:
         box = shape.bounding_box()
         dimensions = [float(v)/1000 for v in box.size]
         centroid = [float(v)/1000 for v in shape.center(CenterOf.MASS)]
-        density = MATERIALS["carbon" if process == "cut-carbon" else "printed"]["density_kg_m3"]
+        density = 650. if process=="cut-plywood" else MATERIALS["carbon" if process == "cut-carbon" else "printed"]["density_kg_m3"]
         mass = float(shape.volume)*1e-9*density if mass_kg is None else mass_kg
+        component=sourced_parts.get("servo" if id.startswith("servo-") else id)
+        if component and "mass_kg" in component.properties and process=="purchase":
+            mass=float(component.properties["mass_kg"].value)
         verts, faces = shape.tessellate(.5,.15)
         mesh={"positions":[float(n)/1000 for v in verts for n in v],
               "indices":[int(n) for face in faces for n in face]}
@@ -44,6 +48,8 @@ def build(parameters: dict, mission: dict, output_dir: Path) -> dict:
             "dimensions_m":dimensions,"centroid_m":centroid,"color":color,"valid":shape_valid,
             "volume_m3":float(shape.volume)*1e-9,"mesh":mesh,"note":note,
             "file":f"cad/{id}.stl" if process=="print" else None})
+        if component:
+            parts[-1]["component"]=component.model_dump()
         shapes.append(shape)
 
     def tube(start, end, diameter, wall):
@@ -83,9 +89,36 @@ def build(parameters: dict, mission: dict, output_dir: Path) -> dict:
                 inner=Solid.make_loft([foil_wire(xyz,c,foil,scale=max(.72,1-p["skin_m"]/(.06*c)),incidence=incidence) for xyz,c in ends],ruled=True)
                 shell=outer-inner
                 prefix="tail" if is_tail else "wing"
+                if not is_tail:
+                    # Interior rib at each segment root, with a clearance bore
+                    # following the same spar datum/dihedral as the assembly.
+                    (xyz,c),_=ends
+                    rib_ends=[(xyz+np.array([0,sign*.001,0]),c),(xyz+np.array([0,sign*.002,0]),c)]
+                    rib=Solid.make_loft([foil_wire(q,ch,foil,scale=.985) for q,ch in rib_ends],ruled=True)
+                    shell=shell+rib
+                    a=root.copy();b=tip.copy();a[0]+=.30*cr;b[0]+=.30*ct;a[2]+=.015*cr;b[2]+=.015*ct;b[1]*=sign
+                    vector=(b-a)*1000
+                    bore=Solid.make_cylinder((p["spar_od_m"]+.0003)*500,float(np.linalg.norm(vector))+4,
+                        Plane(origin=tuple(a*1000-vector/np.linalg.norm(vector)*2),z_dir=tuple(vector)))
+                    shell=shell-bore
+                # Split physical control surfaces with a declared 0.6 mm hinge
+                # gap. The aerodynamic model's hinge datum is 75% chord.
+                if is_tail or index>=count//2+1:
+                    def control_mask(gap):
+                        wires=[]
+                        for xyz,c in ends:
+                            hinge=(xyz[0]+.75*c*math.cos(math.radians(incidence)))*1000+gap
+                            y=xyz[1]*1000
+                            wires.append(Wire.make_polygon([(hinge,y,-150),(1100,y,-150),(1100,y,350),(hinge,y,350)],close=True))
+                        return Solid.make_loft(wires,ruled=True)
+                    control=shell & control_mask(.3)
+                    shell=shell-control_mask(-.3)
+                    control_name="elevator" if is_tail else "aileron"
+                    add(f"{control_name}-{side}-{index+1}",f"{control_name.title()} {side} {index+1}",control,"controls",color="#c4d3b8",
+                        note="75% chord hinge datum; 0.6 mm chordwise gap. Hinge tape and travel require inspection.")
                 add(f"{prefix}-{side}-{index+1}",f"{prefix.title()} {side} · segment {index+1}",shell,prefix,
                     color="#e8ece0" if is_tail else "#dce5d4",
-                    note="Airfoil shell candidate; wall offset is scaled, seams/hinges and sliced density need verification.")
+                    note="Airfoil shell and integral rib candidate; scaled wall offset, seams and sliced density need verification.")
             if not is_tail:
                 # Spar follows the same spanwise dihedral and chordwise datum.
                 start=root.copy(); end=tip.copy()
@@ -100,25 +133,50 @@ def build(parameters: dict, mission: dict, output_dir: Path) -> dict:
     fin_sections=[([.87,0,.07],.15),([.94,0,.24],.075)]
     fin_outer=Solid.make_loft([foil_wire(xyz,c,"naca0012",vertical=True) for xyz,c in fin_sections],ruled=True)
     fin_inner=Solid.make_loft([foil_wire(xyz,c,"naca0012",scale=.86,vertical=True) for xyz,c in fin_sections],ruled=True)
-    add("fin","Vertical tail",fin_outer-fin_inner,"tail",note="Rudder split and hinges pending detailed design.")
+    fin_shell=fin_outer-fin_inner
+    rudder_wires=[]
+    for xyz,c in fin_sections:
+        x=(xyz[0]+.75*c)*1000;z=xyz[2]*1000
+        rudder_wires.append(Wire.make_polygon([(x,-100,z),(1200,-100,z),(1200,100,z),(x,100,z)],close=True))
+    rudder_mask=Solid.make_loft(rudder_wires,ruled=True)
+    add("rudder","Rudder",fin_shell & rudder_mask,"controls",color="#c4d3b8",note="Hinge/travel clearances require inspection.")
+    add("fin","Vertical tail",fin_shell-rudder_mask,"tail",note="Rudder hinge datum at 75% local chord.")
 
     # Circular-section pod, divided into three printable shells.
     fuselage_sections=[(0,.003),(.08,.045),(.22,.055),(.43,.05),(.58,.025),(.66,.008)]
     outer=Solid.make_loft([Wire.make_circle(r*1000,Plane(origin=(x*1000,0,0),z_dir=(1,0,0))) for x,r in fuselage_sections])
     inner=Solid.make_loft([Wire.make_circle(max(.0008,r-.0012)*1000,Plane(origin=(x*1000,0,0),z_dir=(1,0,0))) for x,r in fuselage_sections])
     pod=outer-inner
+    # Removable top access panels, each within the print envelope.
+    hatch_mask=Box(400,140,100).moved(Location((300,0,78)))
+    hatch=pod & hatch_mask
+    pod=pod-hatch_mask
+    for i in range(2):
+        hatch_piece=hatch & Box(200,160,160).moved(Location((200+i*200,0,60)))
+        add(f"hatch-{i+1}",f"Top access hatch {i+1}",hatch_piece,"fuselage",color="#c3d2b6",
+            note="Install internal components before wing saddle. Positive retention and seam clearances require inspection.")
     for i in range(3):
         cutter=Box(220,180,180).moved(Location((i*220+110,0,0)))
         segment=pod & cutter
         add(f"pod-{i+1}",f"Fuselage shell {i+1}",segment,"fuselage",color="#eef0e5",
-            note="Candidate shell; hatch, joint tabs and retention details remain open.")
+            note="Candidate shell with top access opening. Seam joint and local reinforcement checks remain open.")
     add("boom","Carbon tail boom",tube([.54,0,.025],[.99,0,.07],.012,.001),"structure","cut-carbon",color="#263b33")
-    add("motor-pylon","Motor pylon candidate",Box(22,30,160).moved(Location((552,0,125))),"power",
-        note="Solid mounting envelope; bolt pattern, load path and fastening pending.",color="#668473")
+    pylon_profile=Wire.make_polygon([(500,-3,35),(602,-3,35),(569,-3,208),(551,-3,208)],close=True)
+    from build123d import Face
+    pylon=Solid.extrude(Face(pylon_profile),(0,6,0))
+    add("motor-pylon","6 mm plywood motor pylon",pylon,"power","cut-plywood",
+        note="Cut profile candidate; plywood grain direction, root fastening and load validation remain open.",color="#b59b70")
+    firewall=Solid.make_cylinder(22,4,Plane(origin=(545,0,220),z_dir=(1,0,0)))
+    for y,z in [(-8,212),(-8,228),(8,212),(8,228)]:
+        firewall=firewall-Solid.make_cylinder(1.6,6,Plane(origin=(544,y,z),z_dir=(1,0,0)))
+    add("motor-firewall","Motor firewall candidate",firewall,"power","cut-plywood",color="#b59b70",
+        note="Provisional 16 mm square M3 pattern; vendor pattern must be confirmed before cutting.")
+    saddle=(Box(82,86,65)-Box(76,80,70)).moved(Location((342,0,75)))-outer
+    add("wing-saddle","Wing mounting saddle",saddle,"structure",note="Connects pod to elevated wing; center spar restraint and fastening need validation.",color="#71946b")
     add("battery-tray","Battery tray candidate",Box(105,43,2).moved(Location((p["battery_x_m"]*1000,0,-24))),"power")
     add("payload-tray","Payload tray candidate",Box(65,45,2).moved(Location((p["payload_x_m"]*1000,0,17))),"payload")
     # COTS geometry is an explicitly labeled envelope, not a fabricated vendor model.
-    add("battery","3S battery envelope",Box(72,35,24).moved(Location((p["battery_x_m"]*1000,0,-10))),"power","purchase",.120,"#c88149","Exact SKU and dimensions pending.")
+    add("battery","Tattu 1300mAh 3S battery",Box(72,36,22).moved(Location((p["battery_x_m"]*1000,0,-10))),"power","purchase",.122,"#c88149","TAA13003S75X6: manufacturer mass/dimensions. Wire/connector routing still requires clearance checks.")
     add("payload","Mission payload envelope",Box(45,35,30).moved(Location((p["payload_x_m"]*1000,0,35))),"payload","provided",mission["payload_kg"],"#50685e","Payload envelope is an allocation; user hardware not measured.")
     add("esc","Skywalker 20A V2 envelope",Box(45,23,8).moved(Location((420,0,-20))),"power","purchase",.019,"#344a41","Manufacturer dimensions; connector lead envelopes not included.")
     add("motor","EMAX GT2215 motor envelope",Cylinder(14,32,rotation=(0,90,0)).moved(Location((566,0,220))),"power","purchase",.060,"#59655b","Motor mass and dimensions estimated pending drawing.")
@@ -144,7 +202,7 @@ def build(parameters: dict, mission: dict, output_dir: Path) -> dict:
         "checks":{"max_print_dimension_m":max_print,"invalid_solids":sum(not part["valid"] for part in parts),
                   "step_volume_relative_error":volume_error},
         "coverage":{"complete_manufacturing_definition":False,"assembly_verified":False,
-            "open_items":["Control surface separation, hinge and linkage geometry","Fastener and joint details","Battery hatch and retention","Motor bolt pattern and support sizing","Supplier tube and COTS selections","Collision/access/sequence verification","Process calibration and slicing"]}}
+            "open_items":["Control hinge, horn and linkage selection/travel","Fastener and joint details","Battery/hatch positive retention","Vendor motor bolt-pattern confirmation and support loads","Supplier tube and remaining COTS selections","Collision/access/sequence verification","Process calibration and slicing"]}}
     (output_dir/"geometry.json").write_text(json.dumps(metadata,allow_nan=False))
     (output_dir/"design-parameters.json").write_text(json.dumps(p,indent=2))
     return metadata
@@ -161,4 +219,3 @@ def cad_output(inputs):
 
 def method():
     return Method("cad","build123d-0.10.0;ocp-7.8.1.1;openv/1",("cad_checks","geometry"),cad_output)
-
