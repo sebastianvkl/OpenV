@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import Scene from "./scene.jsx";
 
@@ -31,7 +31,6 @@ import "./style.css";
 const url = (run, path) => `/artifacts/${run}/${path}`;
 const human = (s) => s?.replaceAll("-", " ") || "";
 const number = (n, d = 2) => (Number.isFinite(n) ? n.toFixed(d) : "—");
-const point = ([x, y, z]) => [y, z, -x + 0.45];
 const api = async (path, options) => {
   const r = await fetch(path, options);
   if (!r.ok) {
@@ -255,6 +254,14 @@ function App() {
             r.find(
               (item) =>
                 item.status === "complete" &&
+                item.visualization_file &&
+                item.scenario?.cruise_mps === 12 &&
+                item.scenario?.altitude_m === 0 &&
+                item.scenario?.load_factor === 2.5,
+            ) ||
+            r.find(
+              (item) =>
+                item.status === "complete" &&
                 item.current_design_id &&
                 item.provider === "Astra",
             ) ||
@@ -457,6 +464,24 @@ function App() {
     setRun(null);
     setGeometry(null);
     setStep(0);
+  };
+  const selectCondition = (changes) => {
+    if (!run?.system) return;
+    const desired = { ...run.system.scenario, ...perturbation, ...changes };
+    const designDraft = Object.keys(perturbation).some(
+      (key) => !["cruise_mps", "altitude_m", "load_factor"].includes(key),
+    );
+    const cached =
+      !designDraft &&
+      recordedCases.find((item) =>
+        ["cruise_mps", "altitude_m", "load_factor"].every(
+          (key) => item.scenario[key] === desired[key],
+        ),
+      );
+    if (cached) {
+      setPerturbation({});
+      chooseRun(cached.id);
+    } else setPerturbation((p) => ({ ...p, ...changes }));
   };
   return (
     <main>
@@ -824,73 +849,56 @@ function App() {
                 ))}
               </div>
               <div className="condition-presets">
-                <button
-                  onClick={() =>
-                    setPerturbation((p) => ({
-                      ...p,
-                      cruise_mps: 12,
-                      altitude_m: 0,
-                      load_factor: 2.5,
-                    }))
-                  }
-                >
-                  Cruise
-                </button>
-                <button
-                  onClick={() =>
-                    setPerturbation((p) => ({
-                      ...p,
-                      cruise_mps: 8,
-                      altitude_m: 0,
-                      load_factor: 2.5,
-                    }))
-                  }
-                >
-                  Slow flight
-                </button>
-                <button
-                  onClick={() =>
-                    setPerturbation((p) => ({
-                      ...p,
-                      cruise_mps: 12,
-                      altitude_m: 2000,
-                      load_factor: 2.5,
-                    }))
-                  }
-                >
-                  High altitude
-                </button>
-                <button
-                  onClick={() =>
-                    setPerturbation((p) => ({ ...p, load_factor: 4 }))
-                  }
-                >
-                  4 g load
-                </button>
-              </div>
-              {Object.keys(perturbation).some((k) =>
-                ["cruise_mps", "altitude_m", "load_factor"].includes(k),
-              ) && (
-                <div className="condition-draft">
-                  <b>Draft condition · results below are unchanged</b>
-                  <p>
-                    {perturbation.cruise_mps ?? run.system.scenario.cruise_mps}{" "}
-                    m/s ·{" "}
-                    {perturbation.altitude_m ?? run.system.scenario.altitude_m}{" "}
-                    m ASL ·{" "}
-                    {perturbation.load_factor ??
-                      run.system.scenario.load_factor}{" "}
-                    g
-                  </p>
+                {[
+                  [
+                    "Cruise",
+                    { cruise_mps: 12, altitude_m: 0, load_factor: 2.5 },
+                  ],
+                  [
+                    "Slow flight",
+                    { cruise_mps: 8, altitude_m: 0, load_factor: 2.5 },
+                  ],
+                  [
+                    "High altitude",
+                    { cruise_mps: 12, altitude_m: 2000, load_factor: 2.5 },
+                  ],
+                  ["4 g load", { load_factor: 4 }],
+                ].map(([name, changes]) => (
                   <button
-                    className="primary"
-                    disabled={busy || config.busy || isRunning}
-                    onClick={() => runExperiment(false)}
+                    key={name}
+                    disabled={!run?.system || !version}
+                    onClick={() => selectCondition(changes)}
                   >
-                    Run condition checks <ArrowRight size={12} />
+                    {name}
                   </button>
-                </div>
-              )}
+                ))}
+              </div>
+              {run?.system &&
+                Object.keys(perturbation).some((k) =>
+                  ["cruise_mps", "altitude_m", "load_factor"].includes(k),
+                ) && (
+                  <div className="condition-draft">
+                    <b>Draft condition · results below are unchanged</b>
+                    <p>
+                      {perturbation.cruise_mps ??
+                        run.system.scenario.cruise_mps}{" "}
+                      m/s ·{" "}
+                      {perturbation.altitude_m ??
+                        run.system.scenario.altitude_m}{" "}
+                      m ASL ·{" "}
+                      {perturbation.load_factor ??
+                        run.system.scenario.load_factor}{" "}
+                      g
+                    </p>
+                    <button
+                      className="primary"
+                      disabled={busy || config.busy || isRunning}
+                      onClick={() => runExperiment(false)}
+                    >
+                      Run condition checks <ArrowRight size={12} />
+                    </button>
+                  </div>
+                )}
               {recordedCases.length > 0 && (
                 <label className="recorded-cases">
                   OPEN A COMPUTED CONDITION
@@ -931,23 +939,39 @@ function App() {
                     <p>
                       {validFlow?.status === "COMPUTED"
                         ? `${flow.panel_count} VLM panels · ${flow.streamlines_m.length} computed streamlines`
-                        : "No computed flow field for this version. Run checks below to generate it."}
+                        : validFlow?.reason ||
+                          "No computed flow field for this version. Run checks below to generate it."}
                     </p>
                     {validFlow?.status === "COMPUTED" && (
                       <>
+                        <a
+                          className="text-link"
+                          href={url(
+                            runId,
+                            `${selectedVersion}/simulation.json`,
+                          )}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Inspect solver data <ArrowUpRight size={12} />
+                        </a>
                         <div className="load-legend" />
                         <small>
-                          Panel normal load ·{" "}
+                          Normal load color scale ·{" "}
                           {number(
-                            Math.min(
-                              ...flow.panels.map((p) => p.normal_load_pa),
+                            -Math.max(
+                              ...flow.panels.map((p) =>
+                                Math.abs(p.normal_load_pa),
+                              ),
                             ),
                             0,
                           )}{" "}
                           to{" "}
                           {number(
                             Math.max(
-                              ...flow.panels.map((p) => p.normal_load_pa),
+                              ...flow.panels.map((p) =>
+                                Math.abs(p.normal_load_pa),
+                              ),
                             ),
                             0,
                           )}{" "}
@@ -1238,7 +1262,11 @@ function App() {
           <span className="crosshair">+</span>
           <span>
             {mode === "Simulate"
-              ? "ACTUAL SOLVER OUTPUTS / VERSION-BOUND"
+              ? environment === "flight"
+                ? "RECORDED TRIM / ILLUSTRATIVE TERRAIN"
+                : environment === "structure"
+                  ? "SPAR BENDING / IDEAL ROOT RESTRAINT"
+                  : "COMPUTED VLM / UNBOUNDED INVISCID FLOW"
               : mode === "Assemble"
                 ? "ASSEMBLY SEQUENCE / VERIFICATION OPEN"
                 : "PARAMETRIC CAD / CANONICAL ENGINEERING STATE"}

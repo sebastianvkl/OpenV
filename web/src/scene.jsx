@@ -71,6 +71,50 @@ function surfaceTexture(kind) {
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
+
+// Cosmetic labels on the existing component envelopes, not vendor CAD.
+function componentTexture(part) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = part.id === "battery" ? "#344939" : "#293231";
+  ctx.fillRect(0, 0, 512, 256);
+  ctx.fillStyle = "#cf9b54";
+  ctx.fillRect(0, 0, 512, 24);
+  ctx.fillRect(0, 228, 512, 28);
+  if (part.id === "motor") {
+    ctx.fillStyle = "#889193";
+    ctx.fillRect(0, 28, 512, 194);
+    for (let x = 0; x < 512; x += 16) {
+      ctx.fillStyle = x % 32 ? "#738083" : "#aeb5b4";
+      ctx.fillRect(x, 35, 2, 180);
+    }
+  } else {
+    ctx.fillStyle = "#f0f0db";
+    ctx.font = "bold 55px sans-serif";
+    ctx.fillText(
+      part.id === "battery"
+        ? "1300 mAh"
+        : part.id === "esc"
+          ? "20A ESC"
+          : "CONTROL",
+      24,
+      105,
+    );
+    ctx.font = "25px sans-serif";
+    ctx.fillText(
+      part.id === "battery" ? "3S / 11.1V   LiPo" : "COMPONENT ENVELOPE",
+      24,
+      155,
+    );
+    for (let x = 360; x < 480; x += 5) ctx.fillRect(x, 175, (x % 3) + 1, 30);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
+}
 function Part({
   part,
   explode,
@@ -85,8 +129,10 @@ function Part({
     () =>
       ["print", "cut-carbon", "cut-plywood"].includes(part.process)
         ? surfaceTexture(part.process)
-        : null,
-    [part.process],
+        : ["battery", "esc", "motor", "receiver"].includes(part.id)
+          ? componentTexture(part)
+          : null,
+    [part],
   );
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry(),
@@ -95,10 +141,21 @@ function Part({
     for (let i = 0; i < part.mesh.positions.length; i += 3) {
       const a = part.mesh.positions.slice(i, i + 3);
       p.push(...point(a));
-      uv.push(
-        (a[0] + a[1]) * (part.process === "cut-carbon" ? 35 : 7),
-        a[2] * 25 + a[1] * 3,
-      );
+      if (part.process === "purchase") {
+        uv.push(
+          (a[0] - part.centroid_m[0]) / part.dimensions_m[0] + 0.5,
+          part.id === "motor"
+            ? Math.atan2(a[2] - part.centroid_m[2], a[1] - part.centroid_m[1]) /
+                (2 * Math.PI) +
+                0.5
+            : (a[1] - part.centroid_m[1]) / part.dimensions_m[1] + 0.5,
+        );
+      } else {
+        uv.push(
+          (a[0] + a[1]) * (part.process === "cut-carbon" ? 35 : 7),
+          a[2] * 25 + a[1] * 3,
+        );
+      }
     }
     g.setAttribute("position", new THREE.Float32BufferAttribute(p, 3));
     g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
@@ -156,9 +213,13 @@ function Part({
       }}
     >
       <meshPhysicalMaterial
-        color={color}
+        color={
+          part.process === "purchase" && texture && selected !== part.id
+            ? "#ffffff"
+            : color
+        }
         map={texture}
-        bumpMap={texture}
+        bumpMap={part.process === "purchase" ? null : texture}
         bumpScale={part.process === "print" ? 0.00012 : 0.00035}
         roughness={
           part.process === "cut-carbon"
@@ -328,8 +389,8 @@ function Flow({ flow }) {
     );
     flow.panels.forEach((panel) => {
       const t = panel.normal_load_pa / scale;
-      const color = new THREE.Color(t < 0 ? "#617bd0" : "#53b7bd").lerp(
-        new THREE.Color(t < 0 ? "#373aa3" : "#efae52"),
+      const color = new THREE.Color("#53b7bd").lerp(
+        new THREE.Color(t < 0 ? "#617bd0" : "#efae52"),
         Math.abs(t),
       );
       for (const k of [0, 1, 2, 0, 2, 3]) {
@@ -634,7 +695,7 @@ export default function Scene({
         {(!sim || environment === "structure") && (
           <ContactShadows
             position={[0, -0.1, 0]}
-            opacity={0.4}
+            opacity={inside ? 0.12 : 0.32}
             scale={5}
             blur={2.5}
             far={2}
@@ -642,7 +703,7 @@ export default function Scene({
           />
         )}
       </Suspense>
-      {(!sim || environment === "structure") && (
+      {sim && environment === "structure" && (
         <gridHelper
           args={[
             5,

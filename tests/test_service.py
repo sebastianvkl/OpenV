@@ -80,3 +80,24 @@ def test_only_explicit_mission_threshold_is_amended(parent):
     for old,new in zip(parent[0]['system']['requirements'],hardware.requirements):
         if old['id']=='mass':assert new.contracts[0].threshold==1.5
         else:assert new.model_dump()==old
+
+
+def test_condition_comparison_excludes_only_operating_conditions(parent):
+    from copy import deepcopy
+    data,folder=parent
+    original=server.runs()[0]['comparison_key']
+    changed=deepcopy(data)
+    changed['system']['scenario'].update(cruise_mps=8,altitude_m=2000,load_factor=4)
+    write_json(folder/'parent'/'run.json',changed)
+    assert server.runs()[0]['comparison_key']==original
+    changed['system']['scenario']['payload_kg']=.3
+    write_json(folder/'parent'/'run.json',changed)
+    assert server.runs()[0]['comparison_key']!=original
+    changed=deepcopy(data)
+    changed['versions'][0]['parameters']['span_m']=1.5
+    write_json(folder/'parent'/'run.json',changed)
+    assert server.runs()[0]['comparison_key']!=original
+    changed=deepcopy(data)
+    changed['system']['requirements'][0]['contracts'][0]['threshold']=2
+    write_json(folder/'parent'/'run.json',changed)
+    assert server.runs()[0]['comparison_key']!=original
