@@ -17,6 +17,9 @@ class BracketEngineer:
     def define(self,text):return BracketProposal()
     def redesign(self,context):
         assert context['evaluations'][0]['status']=='FAIL'
+        assert context['verification_inputs']['width_mm']==12
+        assert 'inputs' not in context['evidence'][0]
+        assert context['evidence'][0]['output']['metrics']['width_mm']['value']==12
         return Proposal(problem='Part exceeds machine opening',hypothesis='Reduce width',
             changes={'width_mm':9},expected_effect='Fit the 10 mm opening')
 

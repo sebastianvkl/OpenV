@@ -10,7 +10,7 @@ Published examples identify their proposer. Live Astra requires server credentia
 
 ## Run locally
 
-Python 3.12 and Node 20+ are required. CAD dependencies include native OpenCascade wheels.
+Python 3.12 and Node 20.19+ (or 22.12+) are required. CAD dependencies include native OpenCascade wheels.
 
 ```sh
 python3 -m venv .venv

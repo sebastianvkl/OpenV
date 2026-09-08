@@ -228,3 +228,9 @@ A deterministic fixture proposer enables account-free checks with actual CAD and
 CAD and regeneration now consume the frozen HardwareSystem component catalog. Updating a supplier reference must not silently change an existing branch's mass, dimensions or mounting geometry. New baselines use EMAX's GT2215 family table (70 g) and dimensional drawing (28.5 mm body, 33.5 mm length, 19/16 mm M3 mounting pattern), with source URLs and a pinned component revision. Legacy baselines keep their estimated properties. Installed variant, screw engagement and support loads still require verification.
 
 STEP round-trip admission checks part identities, centroids, bounding dimensions and imported validity in addition to volume. Translation can preserve volume while corrupting an assembly. The regression deliberately moves a solid and verifies that it cannot support a CAD PASS.
+
+## D038 - Explicit amendment context and a realistic bounded runtime
+
+**Decision (live experiment, 2026-09-08):** Astra correctly noticed that historical prose still described 150 g while an authorized user experiment increased payload to 350 g. Preserve the original prose and immutable contracts, but include the accepted user experiment and an explicit baseline note in every redesign request. The amended numeric scenario governs; Astra cannot revert the user's amendment to remove failure.
+
+Supply repeated verifier inputs once in model context while retaining all actual measurements, raw outputs, assumptions, evidence IDs and fingerprints. Full evidence artifacts remain unchanged. Native CAD regeneration and multiple high-reasoning model calls can exceed ten minutes; use a configurable thirty-minute hard job budget with five experiments and one admitted worker. Time/iteration exhaustion still returns an honest unresolved state. This is a runtime budget change, not a relaxed engineering contract.

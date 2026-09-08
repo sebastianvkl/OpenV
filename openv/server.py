@@ -150,7 +150,7 @@ async def admit_run(request:RunRequest):
     process=active
     async def supervise():
         try:
-            await asyncio.wait_for(process.wait(),float(os.environ.get("OPENV_RUN_TIMEOUT","600"))+30)
+            await asyncio.wait_for(process.wait(),float(os.environ.get("OPENV_RUN_TIMEOUT","1800"))+30)
             if process.returncode:
                 path=folder/"run.json"
                 data=json.loads(path.read_text()) if path.exists() else {"id":run_id}
@@ -161,7 +161,7 @@ async def admit_run(request:RunRequest):
             process.kill();await process.wait()
             path=folder/"run.json"
             data=json.loads(path.read_text()) if path.exists() else {"id":run_id}
-            data.update(status="interrupted",stop_reason="hard_time_limit")
+            data.update(status="interrupted",stage="interrupted",gate="UNKNOWN",stop_reason="hard_time_limit")
             write_json(path,data)
         finally:
             log.close()

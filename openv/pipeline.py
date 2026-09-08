@@ -124,7 +124,7 @@ class Pipeline:
             self.event("experiment-complete","User perturbation evaluated against explicit baseline",experiment=experiment.model_dump())
         stop="verification_only" if max_experiments==0 else "experiment_limit"
         for _ in range(max_experiments):
-            if time.monotonic()-self.started>float(os.environ.get("OPENV_RUN_TIMEOUT","600")):
+            if time.monotonic()-self.started>float(os.environ.get("OPENV_RUN_TIMEOUT","1800")):
                 stop="time_limit"; break
             failures=[e for e in evaluations if e.status==Status.FAIL]
             if not failures:
@@ -133,7 +133,15 @@ class Pipeline:
             self.event("redesign","Sending actual failure evidence to the proposing engineer")
             proposal_context={"system":hardware.model_dump(),"design":design.model_dump(),
                 "evaluations":[e.model_dump() for e in evaluations],
-                "evidence":[e.model_dump() for e in evidence],"experiments":self.state["experiments"][-3:]}
+                "verification_inputs":context,
+                "evidence":[e.model_dump(exclude={"inputs"}) for e in evidence],
+                "context_note":"Repeated input snapshots are supplied once in verification_inputs. Full immutable evidence retains every original input and fingerprint.",
+                "experiments":self.state["experiments"][-3:]}
+            if self.state.get("user_experiment"):
+                proposal_context["accepted_user_experiment"]=self.state["user_experiment"]
+                proposal_context["baseline_note"]=("The user explicitly authorized the recorded mission amendments. "
+                    "The current numeric scenario and frozen contracts govern this run. Original mission prose and uncovered "
+                    "clauses are retained for traceability; do not restore superseded numeric targets or relax current ones.")
             for attempt in range(3):
                 proposal=self.engineer.redesign(proposal_context)
                 experiment_id=uid("experiment")

@@ -16,7 +16,7 @@ OPENV_AUTH_DIR=/var/lib/openv/auth
 OPENV_STORE=local
 OPENV_MAX_DAILY_RUNS=20
 OPENV_MAX_EXPERIMENTS=5
-OPENV_RUN_TIMEOUT=600
+OPENV_RUN_TIMEOUT=1800
 EOF
 chmod 600 /etc/openv.env
 cat > /etc/systemd/system/openv.service <<'EOF'
