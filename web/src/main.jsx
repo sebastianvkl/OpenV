@@ -340,7 +340,7 @@ function Chart({ aero }) {
   );
 }
 
-function VTrace({ stage, onClick }) {
+function VTrace({ stage, gate, onClick }) {
   const labels = ["Intent", "Requirements", "Design", "Verify", "Release"];
   const done =
     {
@@ -374,13 +374,13 @@ function VTrace({ stage, onClick }) {
             cx={14 + 56 * i}
             cy={[9, 24, 34, 24, 9][i]}
             r="3"
-            fill={i <= done ? "#315d49" : "#d1d7cb"}
+            fill={i === 4 ? (gate === "PASS" ? "#315d49" : gate === "FAIL" ? "#b06c55" : "#b2a266") : i <= done ? "#315d49" : "#d1d7cb"}
           />
         ))}
       </svg>
       <div>
-        {labels.map((s) => (
-          <span key={s}>{s}</span>
+        {labels.map((s, i) => (
+          <span key={s}>{i === 4 && gate !== "PASS" ? "Release open" : s}</span>
         ))}
       </div>
     </button>
@@ -709,7 +709,7 @@ function App() {
             {run ? "Define a new mission" : "Start a mission"}
             <ArrowUpRight size={15} />
           </button>
-          <VTrace stage={run?.stage} onClick={() => showEvidence(null)} />
+          <VTrace stage={run?.stage} gate={data?.gate} onClick={() => showEvidence(null)} />
           {run && (
             <div className="run-note">
               <span className="tiny-label">

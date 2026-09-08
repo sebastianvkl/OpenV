@@ -996,7 +996,9 @@ code {
   }
   .workspace {
     height: auto;
-    min-height: 1040px;
+    min-height: 0;
+    max-height: none;
+    padding-top: 674px;
   }
   .intro {
     top: 30px;
@@ -1044,9 +1046,11 @@ code {
     display: none;
   }
   .inspector {
-    left: 23px;
-    right: 23px;
-    top: 674px;
+    position: relative;
+    left: auto;
+    right: auto;
+    top: auto;
+    margin: 0 23px 24px;
     width: auto;
     padding: 20px;
     max-height: none;
@@ -1068,16 +1072,6 @@ code {
   }
   .segmented {
     margin-bottom: 16px;
-  }
-  .inspector:has(.metric),
-  .inspector:has(.step-number) {
-    position: relative;
-    top: 674px;
-    margin-bottom: 715px;
-  }
-  .workspace:has(.metric),
-  .workspace:has(.step-number) {
-    min-height: 1200px;
   }
   .run-strip {
     height: auto;
