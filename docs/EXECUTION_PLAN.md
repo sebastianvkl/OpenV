@@ -311,3 +311,10 @@ The user approved implementation with "Go ahead". Proceed through P0 autonomousl
 - [x] Add procedural valley/coast/ridge scenery, airfield, trees, water and distant hills around the real CAD aircraft.
 - [x] Add prescribed-route animation, chase/wing/survey cameras, play/pause, restart and playback rate; keep physical flight UNKNOWN.
 - [x] Verify moving frames, identical paused frames, failure-preserving case switching, camera/scenery selection, reduced-motion startup and mobile layout; publish the updated website.
+
+### Clickable component specifications and sourcing
+
+- [x] Display frozen component specs, manufacturer, part number, provenance and recorded source links when clicking CAD parts.
+- [x] Link exact selected motor, battery and ESC to their product storefronts; preserve UNKNOWN selection for unresolved purchased parts.
+- [x] Add an accessible selector for hidden parts, pause viewer motion during inspection, and expose custom-part stock details and version-matched CAD downloads.
+- [x] Check actual mesh selection, sourced specs, pending parts, CAD download responses, flight pause and desktop/mobile layout with browser automation; production build succeeds.

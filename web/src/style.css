@@ -1486,3 +1486,143 @@ code {
     margin-top: 26px;
   }
 }
+
+.component-picker {
+  display: block;
+  font-size: 9px;
+  color: #69785f;
+  margin-bottom: 20px;
+}
+.component-picker select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin-top: 7px;
+  padding: 9px 6px;
+  border: 1px solid #cbd5c2;
+  border-radius: 4px;
+  background: #f5f7f0;
+  color: #34462f;
+  font: inherit;
+}
+.component-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 13px 0;
+  font-size: 10px;
+}
+.component-identity strong {
+  font-weight: 500;
+}
+.component-identity span {
+  color: #6f7b66;
+}
+.component-identity code {
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.component-buy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 12px;
+  border-radius: 4px;
+  background: #344b31;
+  color: #fff;
+  font-size: 10px;
+  text-decoration: none;
+  margin-top: 14px;
+}
+.component-buy:hover {
+  background: #4b6544;
+}
+.component-buy.secondary {
+  background: #e4eadd;
+  color: #344b31;
+}
+.component-pending {
+  border-left: 2px solid #b78a48;
+  padding: 7px 10px;
+  background: #ece4d333;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.component-section {
+  border-top: 1px solid #ccd5c5;
+  margin-top: 19px;
+  padding-top: 15px;
+}
+.component-section h3 {
+  font-size: 10px;
+  font-weight: 500;
+  margin: 0 0 13px;
+}
+.component-specs {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.component-specs > div {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 9px;
+  font-size: 10px;
+}
+.component-specs dt {
+  color: #6f7b66;
+  text-transform: capitalize;
+}
+.component-specs dd {
+  text-align: right;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.component-specs b {
+  font-weight: 500;
+}
+.component-specs small {
+  display: block;
+  font-size: 8px;
+  color: #7b8475;
+  line-height: 1.5;
+  margin-top: 3px;
+}
+.property-quality {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  margin-top: 4px;
+  color: #7d876f;
+  font-size: 8px;
+}
+.property-quality a {
+  color: inherit;
+  display: inline-flex;
+  padding: 2px;
+}
+.component-sources {
+  border-top: 1px solid #ccd5c5;
+  margin-top: 18px;
+  padding-top: 12px;
+  font-size: 9px;
+}
+.component-sources summary {
+  cursor: pointer;
+}
+.component-sources a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  color: #536a49;
+  overflow-wrap: anywhere;
+}
+.component-revision {
+  overflow-wrap: anywhere;
+  margin-top: 16px;
+}

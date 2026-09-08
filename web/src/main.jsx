@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import Scene from "./scene.jsx";
+import ComponentDetails from "./component-details.jsx";
 
 import {
   ArrowDown,
@@ -555,7 +556,11 @@ function App() {
                 flightRate,
                 flightReset: `${runId}:${selectedVersion}:${flightReset}`,
               }}
-              onSelect={setSelected}
+              onSelect={(part) => {
+                setSelected(part);
+                setFlightPlaying(false);
+                setAutoRotate(false);
+              }}
               stepGroups={mode === "Assemble" ? stepInfo?.groups : null}
             />
           ) : (
@@ -747,54 +752,38 @@ function App() {
           </div>
         )}
         <aside className="inspector">
+          {geometry && (
+            <label className="component-picker">
+              Inspect a component
+              <select
+                aria-label="Inspect a component"
+                value={selected?.id || ""}
+                onChange={(event) => {
+                  setSelected(
+                    geometry.parts.find(
+                      (part) => part.id === event.target.value,
+                    ) || null,
+                  );
+                  setFlightPlaying(false);
+                  setAutoRotate(false);
+                }}
+              >
+                <option value="">Click a part or choose here…</option>
+                {geometry.parts.map((part) => (
+                  <option key={part.id} value={part.id}>
+                    {part.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
           {selected ? (
-            <>
-              <div className="panel-heading">
-                <span>PART DETAILS</span>
-                <button
-                  onClick={() => setSelected(null)}
-                  aria-label="Close part details"
-                >
-                  <X size={15} />
-                </button>
-              </div>
-              <span className="tiny-label">{human(selected.group)}</span>
-              <h2>{selected.name}</h2>
-              <div className="part-specs">
-                <div>
-                  <span>Process</span>
-                  <b>{human(selected.process)}</b>
-                </div>
-                <div>
-                  <span>Modeled mass</span>
-                  <b>{number(selected.mass_kg * 1000, 1)} g</b>
-                </div>
-                <div>
-                  <span>Bounds</span>
-                  <b>
-                    {selected.dimensions_m
-                      .map((v) => number(v * 1000, 0))
-                      .join(" × ")}{" "}
-                    mm
-                  </b>
-                </div>
-              </div>
-              <p className="small-copy">
-                {selected.note || "Generated from canonical design parameters."}
-              </p>
-              <p className="tiny muted">{selected.mass_quality}</p>
-              {selected.file && (
-                <a
-                  className="text-link"
-                  href={url(runId, `${selectedVersion}/${selected.file}`)}
-                  download
-                >
-                  Download part{" "}
-                  {selected.file.endsWith(".step") ? "STEP" : "STL"}{" "}
-                  <Download size={13} />
-                </a>
-              )}
-            </>
+            <ComponentDetails
+              part={selected}
+              downloadUrl={url(runId, `${selectedVersion}/${selected.file}`)}
+              onClose={() => setSelected(null)}
+            />
           ) : mode === "Explore" ? (
             <>
               <div className="panel-heading">
