@@ -365,4 +365,4 @@ First local browser import took 48.6 seconds for the 11.6 MB fixture; cached rev
 - [x] Persist two parsed STEP displays in browser storage, keyed by source SHA-256 and reader settings. Re-download/hash the STEP before persistent reuse; keep import admission checks and bypass the cache on explicit retry.
 - [x] Five viewer unit checks pass. Local browser acceptance exercised part visibility/reset, close-up/top views, XYZ labels, cached reload, blocked source, changed source, cancellation and mobile layout, with no JavaScript errors or engineering writes. First import took 48.6 s; cached reload took 2.0 s.
 - [x] Recheck primary manufacturer resources for exact purchased-part CAD; retain labeled envelopes because no trustworthy exact STEP download was established.
-- [ ] Verify and publish these controls/cache against the live 45-part candidate.
+- [x] Published commit `65faecf` on Vercel and verified the live 45-part candidate. Production browser acceptance passed all inspection/cache/source-failure/mobile checks with no JavaScript errors or engineering writes. Cold import took 53.9 s; hash-checked cached reload took 5.0 s.
