@@ -1160,6 +1160,9 @@ function App() {
       <footer>
         <div className="footer-thesis">
           Generated is not verified.<span>Evidence makes the difference.</span>
+          <a className="text-link" href="/demo/openv-demo.mp4" target="_blank" rel="noreferrer">
+            Watch the 1-minute demo <ArrowUpRight size={12} />
+          </a>
         </div>
         <div className="footer-actions">
           {runs.length > 0 && (

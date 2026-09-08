@@ -13,9 +13,11 @@ Updated: 2026-09-08. **Implementation approved by the user ("Go ahead"). Target:
 - [x] Individual cut-part STEP files, stock dimensions, complete modeled-mass BOM accounting and regeneration source added to candidate packaging.
 - [x] Real Astra received measured mass/stability failures and proposed a 70 mm payload shift; external re-verification changed static-margin FAIL to PASS. A later CAD rebuild hit the original ten-minute runtime limit; the interrupted run has no final package.
 - [x] STEP round-trip checks cover identity, position, dimensions, validity and volume; frozen component catalogs preserve historical CAD. Twenty-nine automated tests pass.
-- [ ] Complete live trajectory/package, fresh public mission acceptance, remaining manufacturing definition and submission video are in progress.
+- [x] Fresh public mission `run-38f998e18d41` completed the real Astra fail/redesign/reverify/package loop in 293 seconds; all 55 package manifest hashes verified.
+- [x] Public run `run-626e87d14855` uses the updated sourced motor catalog and stronger export checks: 43 CAD parts, 1.1443 kg modeled mass, 10 PASS / 0 FAIL / 7 UNKNOWN, all 61 manifest hashes verified.
+- [ ] Complete manufacturing definition remains open: hinges/linkages, fastening/joints, retention, remaining vendor selections and process details. No manufacturing or flight release is claimed.
 
-The current 39-part Astra CAD export is a candidate with explicitly listed design gaps; it is not the complete manufacturing package milestone.
+The current 43-part sourced-catalog Astra CAD export is a candidate with explicitly listed design gaps; it is not the complete manufacturing package milestone.
 
 ## Historical pre-implementation review - 11:04 a.m. Pacific
 
@@ -252,18 +254,19 @@ The supplied event guide sets submission at 5:30 p.m.; retain that interval as c
 - [x] Implement one reusable pipeline entry point with small typed domain/tool interfaces; run the aircraft demo through that same entry point and keep aircraft assumptions out of the core.
 - [x] Connect to Dalus exclusively through MCP and verify supported read/write/evidence-reference capabilities.
 - [x] Implement the small canonical snapshot, frozen contracts, and tiny sourced component/reference set with explicit unknowns.
-- [ ] Generate an actual full-reference-system parametric CAD assembly and fabrication exports; retain editable state/source and verify round-trip geometry/units/part identity.
+- [x] Generate the current 43-part parametric aircraft CAD assembly and fabrication exports; retain editable state/source and verify round-trip geometry/units/part identity.
+- [ ] Finish the complete manufacturing definition: resolve the explicitly listed missing installation/joint/control details and verify them. The current package remains a candidate; this part of the original P0 milestone is not complete.
 - [x] Integrate a validated AeroSandbox flight-analysis path and independent supporting calculations/checks; implement deterministic evaluations and provenance. Cover or explicitly leave open all required verification categories.
 - [x] Implement versioned patches, transitive invalidation, experiment history, and re-verification.
 - [x] Connect real Astra mission/design/redesign proposals; mediate all writes and feed actual evidence back.
 - [x] Bound iterations/retries/timeouts; retain honest FAIL/UNKNOWN and stop reasons when unresolved.
-- [ ] Build a polished CAD-model-centered mission -> simulate -> fail -> repair experience with actual result overlays and evidence/Dalus trace.
+- [x] Build a polished CAD-model-centered mission -> simulate -> fail -> repair experience with actual result overlays and evidence/Dalus trace.
 - [x] Add the reference-inspired Explore/Simulate/Assemble views on the same CAD scene: assembled/interior/exploded interaction, selectable components, and a short guided assembly sequence with explicit verification status.
-- [ ] Deploy the public website and live Python pipeline backend; verify a fresh visitor mission end-to-end, run isolation, bounded execution, reference example access, evidence/package downloads, accurate live/recorded labels, and absence of credentials in public assets.
-- [ ] Demonstrate one mission/design perturbation, immediate invalidation, recomputed failures, and Astra's response without mixing nominal and candidate evidence.
-- [ ] Export the system BOM, fabrication details, concise assembly sequence/check status, and evidence manifest tied to the same design as the CAD.
+- [x] Deploy the public website and live Python pipeline backend; verify a fresh visitor mission end-to-end, run isolation, bounded execution, reference example access, evidence/package downloads, accurate live/recorded labels, and absence of credentials in public assets.
+- [x] Demonstrate one mission/design perturbation, immediate invalidation, recomputed failures, and Astra's response without mixing nominal and candidate evidence.
+- [x] Export the system BOM, fabrication details, concise assembly sequence/check status, and evidence manifest tied to the same design as the CAD.
 - [x] Test good/bad cases, missing/invalid evidence, protected thresholds/status writes, transitive invalidation, and old/partial-result exclusion.
-- [ ] Record one real successful repair trajectory, label all fixtures/replays, and prepare the one-minute submission video and repository materials.
+- [x] Record one real successful repair trajectory, label all fixtures/replays, and prepare the one-minute submission video and repository materials. The captioned 59.9-second recording and submission copy are included.
 - [x] Document setup, tool/backend configuration, adding a domain/verifier, known capability limits, and an offline reproducible example; prove the core with a minimal non-aircraft regression.
 
 A fixture proposer cannot satisfy real Astra acceptance. A mocked/local backend cannot satisfy Dalus MCP acceptance. A schematic mesh cannot satisfy CAD/manufacturing acceptance; a few component checks cannot satisfy aircraft simulation acceptance. If a required path is incomplete, report it without substituting a weaker claim. Real recorded runs are a labeled fallback where available.

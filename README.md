@@ -4,9 +4,15 @@
 
 The first domain is a conventional electric RC motor-glider. Astra proposes; the runtime evaluates measurements from AeroSandbox, CAD geometry checks and deterministic calculations. Requirements use PASS / FAIL / UNKNOWN. Changing a design invalidates dependent evidence. Dalus is the live engineering system of record through MCP exclusively.
 
-[Public demo](https://openv-kohl.vercel.app) · [Execution status](docs/EXECUTION_PLAN.md)
+[Public demo](https://openv-kohl.vercel.app) · [One-minute video](https://openv-kohl.vercel.app/demo/openv-demo.mp4) · [Execution status](docs/EXECUTION_PLAN.md)
 
 Published examples identify their proposer. Live Astra requires server credentials; an offline fixture is not an Astra run.
+
+## Recorded engineering results
+
+The [fresh public mission](https://openv-kohl.vercel.app/?run=run-38f998e18d41) ran actual Astra → Dalus MCP → CAD → verification → failure → Astra repair → re-verification. Excessive spar deflection prompted an 8-to-10 mm diameter change. The external calculation changed from 46.3 to 22.2 mm against a 32.5 mm limit. Five dependent evidence records were invalidated; unchanged electrical evidence was reused. The final ten modeled checks passed; eight requirements remained UNKNOWN.
+
+The [current sourced-component example](https://openv-kohl.vercel.app/?run=run-626e87d14855) has 43 CAD parts and 1.1443 kg modeled mass, uses the updated manufacturer motor dimensions/mass, and passes the stronger STEP identity/position/dimension checks. It has ten PASS and seven UNKNOWN results. It needed no redesign; the earlier recorded run demonstrates that loop. Its [candidate package](https://openv-kohl.vercel.app/artifacts/run-626e87d14855/candidate-package.zip) includes STEP, printable-part STLs, cut-stock definitions, BOM, assembly sequence, source and evidence; all 61 manifest hashes were checked.
 
 ## Run locally
 
