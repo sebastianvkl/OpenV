@@ -1,0 +1,11 @@
+.git
+.venv
+.openv
+.env
+.env.*
+artifacts
+node_modules
+web/node_modules
+web/dist
+__pycache__
+.pytest_cache

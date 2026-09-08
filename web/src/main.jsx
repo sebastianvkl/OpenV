@@ -133,9 +133,16 @@ function Camera({ preset, controls }) {
   return null;
 }
 
-function AnalysisOverlay({ evidence, parameters }) {
+function AnalysisOverlay({ evidence, parameters, evaluations }) {
   const aero = evidence.find((e) => e.method === "aero")?.output?.raw;
   const structure = evidence.find((e) => e.method === "structure")?.output?.raw;
+  const structureFailed = evaluations.some(
+    (e) =>
+      ["deflection", "spar"].includes(e.requirement_id) && e.status === "FAIL",
+  );
+  const stabilityFailed = evaluations.some(
+    (e) => e.requirement_id.startsWith("stability-") && e.status === "FAIL",
+  );
   if (!aero?.cg_m) return null;
   const cg = point(aero.cg_m);
   const np = point([aero.x_np, 0, aero.cg_m[2]]);
@@ -146,7 +153,9 @@ function AnalysisOverlay({ evidence, parameters }) {
         <meshBasicMaterial color="#d89050" depthTest={false} />
       </mesh>
       <Html position={[cg[0], cg[1] + 0.07, cg[2]]} center>
-        <span className="scene-label amber">CENTER OF GRAVITY</span>
+        <span className={`scene-label ${stabilityFailed ? "failed" : "amber"}`}>
+          {stabilityFailed ? "STATIC MARGIN FAIL" : "CENTER OF GRAVITY"}
+        </span>
       </Html>
       <Line
         points={[
@@ -183,7 +192,7 @@ function AnalysisOverlay({ evidence, parameters }) {
               0.115 + 0.05 * s.y_m + s.deflection_m * 4,
               0.45 - (0.28 + 0.3 * parameters.chord_m),
             ])}
-            color="#c38252"
+            color={structureFailed ? "#bb5043" : "#c38252"}
             lineWidth={2}
           />
         ))}
@@ -199,6 +208,7 @@ function Scene({
   onSelect,
   mode,
   evidence,
+  evaluations,
   preset,
   autoRotate,
   stepGroups,
@@ -234,6 +244,7 @@ function Scene({
         {mode === "Simulate" && geometry && (
           <AnalysisOverlay
             evidence={evidence}
+            evaluations={evaluations}
             parameters={geometry.parameters}
           />
         )}
@@ -626,6 +637,7 @@ function App() {
                 selected,
                 mode,
                 evidence,
+                evaluations,
                 preset,
                 autoRotate,
               }}
@@ -1068,9 +1080,17 @@ function App() {
       <section className="run-strip">
         <div className="strip-label">
           <span className="tiny-label">ENGINEERING EXPERIMENTS</span>
-          <span>{run?.experiments?.length || 0} recorded changes</span>
+          <span>
+            {(run?.experiments?.length || 0) + (run?.user_experiment ? 1 : 0)}{" "}
+            recorded changes
+          </span>
         </div>
         <div className="version-list">
+          {run?.origin && (
+            <button onClick={() => chooseRun(run.origin.run_id)}>
+              <ArrowLeft size={12} /> Parent design
+            </button>
+          )}
           {run?.versions?.map((v, i) => (
             <button
               key={v.id}
@@ -1084,7 +1104,9 @@ function App() {
               <span>V{String(i + 1).padStart(2, "0")}</span>
               <small>
                 {i === 0
-                  ? "Initial hypothesis"
+                  ? run?.origin
+                    ? "User experiment"
+                    : "Initial hypothesis"
                   : Object.entries(run.experiments[i - 1]?.change || {})
                       .map(([k, v]) => `${human(k)} ${number(v, 3)}`)
                       .join(", ")}

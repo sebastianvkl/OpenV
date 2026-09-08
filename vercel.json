@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "npm ci --prefix web",
+  "buildCommand": "npm run build --prefix web",
+  "outputDirectory": "web/dist",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://openv.3.92.144.120.sslip.io/api/:path*" },
+    { "source": "/artifacts/:path*", "destination": "https://openv.3.92.144.120.sslip.io/artifacts/:path*" }
+  ],
+  "headers": [
+    { "source": "/api/:path*", "headers": [
+      { "key": "Cache-Control", "value": "no-store" },
+      { "key": "x-vercel-enable-rewrite-caching", "value": "0" }
+    ] },
+    { "source": "/artifacts/:path*", "headers": [
+      { "key": "Cache-Control", "value": "no-store" },
+      { "key": "x-vercel-enable-rewrite-caching", "value": "0" }
+    ] }
+  ]
+}

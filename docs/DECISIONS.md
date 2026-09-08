@@ -208,3 +208,7 @@ A deterministic fixture proposer enables account-free checks with actual CAD and
 ## D033 - One public Python host
 
 **Decision (deployment, 2026-09-08):** Use one isolated Ubuntu host in the user's authenticated AWS account, serving FastAPI through Caddy HTTPS and systemd. This supports the native CAD/solver dependencies without introducing a second runtime, database or job framework. One admitted process, daily run quota and hard time/iteration bounds limit public execution. Credentials stay in restricted server-side files. Host resources incur ongoing charges and must be stopped/deleted when no longer needed. The website can show published runs while live credentials are unavailable, with provider labels preserved; this is not acceptance of the live Astra milestone.
+
+## D034 - Vercel website with the existing engineering backend
+
+**Decision (user steering, 2026-09-08):** Deploy the website on Vercel. Keep the native Python CAD/solver worker, artifacts and Dalus session on the existing host. Vercel serves the Vite build and proxies `/api/*` and `/artifacts/*` through external rewrites. Disable caching for changing run/evidence responses. This changes the website host without splitting or replacing the engineering loop. Vercel deployment credentials are separate from Astra/Dalus runtime credentials.

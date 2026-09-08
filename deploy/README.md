@@ -33,3 +33,19 @@ The host and its storage continue to incur normal hosting charges until stopped
 or deleted. Keep provider resource IDs in private operator records; the public
 repo contains no credentials or shared-infrastructure identifiers. Retain/download
 artifacts before deleting the host.
+
+## Vercel website
+
+The user-selected website host is Vercel. The repository-root `vercel.json`
+installs/builds `web/` and serves `web/dist`. External rewrites forward API and
+artifact requests to the Python host; run polling is explicitly uncached.
+For a new installation, replace the two backend destinations in `vercel.json`
+with your HTTPS engineering API origin. Keep its job admission/time/resource
+limits enabled. Set `OPENV_PUBLIC_URL` on the Python host to the stable website
+URL after deployment, so new Dalus evidence references use the public site.
+
+Use `vercel login` and `vercel --prod` from the repository root, or import the
+repository with its Vite configuration. `.vercelignore` excludes local secrets,
+auth sessions, generated engineering artifacts and virtual environments. The
+frontend contains no Astra/Dalus credentials; live jobs use the backend's
+restricted environment and OAuth files.

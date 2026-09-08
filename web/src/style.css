@@ -1171,6 +1171,23 @@ code {
   border: 1px solid #cad3c6;
   border-radius: 5px;
 }
-.dalus-trace { margin: 22px 0; padding: 16px; border: 1px solid var(--line); border-radius: 5px; font-size: 12px; }
-.dalus-trace code { overflow-wrap: anywhere; }
-.dalus-trace pre { max-height: 240px; overflow: auto; font-size: 10px; }
+.dalus-trace {
+  margin: 22px 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 12px;
+}
+.dalus-trace code {
+  overflow-wrap: anywhere;
+}
+.dalus-trace pre {
+  max-height: 240px;
+  overflow: auto;
+  font-size: 10px;
+}
+.scene-label.failed {
+  color: #a83f33;
+  border-color: #d9988d;
+  background: #fff2e9;
+}

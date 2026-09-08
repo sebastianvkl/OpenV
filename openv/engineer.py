@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import os
 
-from pydantic import Field
+from pydantic import Field, ValidationError
 
 from openv.aircraft import Mission, Parameters
 from openv.core import Proposal, Record
@@ -51,18 +51,38 @@ class AstraEngineer:
         self.calls = []
 
     def _request(self, schema, task):
-        response = self.client.responses.parse(model=self.model,
-            instructions=INSTRUCTIONS, input=json.dumps(task,allow_nan=False),
-            text_format=schema, reasoning={"effort":"high"}, max_output_tokens=6000)
-        self.calls.append({"response_id":response.id,"model":response.model,
-            "usage":response.usage.model_dump() if response.usage else None})
-        if response.output_parsed is None:
-            raise RuntimeError("Astra returned no admissible structured proposal")
-        return response.output_parsed
+        task=dict(task)
+        for attempt in range(3):
+            # Preserve response provenance even when Pydantic's engineering
+            # validators reject a syntactically valid structured model output.
+            raw=self.client.responses.with_raw_response.parse(model=self.model,
+                instructions=INSTRUCTIONS,input=json.dumps(task,allow_nan=False),
+                text_format=schema,reasoning={"effort":"high"},max_output_tokens=6000)
+            body=raw.json()
+            record={"response_id":body.get("id"),"model":body.get("model"),
+                "usage":body.get("usage"),"validation":"pending"}
+            self.calls.append(record)
+            try:
+                response=raw.parse()
+                if response.output_parsed is None:
+                    record["validation"]="no_proposal"
+                    raise RuntimeError("Astra returned no admissible structured proposal")
+                record["validation"]="accepted_proposal"
+                return response.output_parsed
+            except ValidationError as exc:
+                rejection=exc.errors(include_url=False,include_context=False)
+                record.update(validation="rejected",errors=rejection)
+                task["previous_proposal"]=[c["text"] for item in body.get("output",[])
+                    for c in item.get("content",[]) if c.get("type")=="output_text"]
+                task["validation_errors"]=rejection
+                task["repair_instruction"]="Correct these input/geometry violations without changing the mission or protected contracts."
+                if attempt==2:raise ValueError("Astra exhausted three structured-proposal validation attempts") from exc
 
     def define(self, mission_text):
         return self._request(MissionProposal, {"task":"Decompose the mission and propose initial design parameters.",
             "original_mission":mission_text,"parameter_bounds":Parameters.model_json_schema(),
+            "geometry_constraints":["2 * spar_wall_m < spar_od_m",
+                "spar_od_m + 2 * skin_m <= 0.10 * chord_m * taper"],
             "mission_bounds":Mission.model_json_schema()})
 
     def redesign(self, context):

@@ -11,3 +11,5 @@ __pycache__/
 artifacts/
 *.egg-info/
 .DS_Store
+
+.vercel/

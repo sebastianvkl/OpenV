@@ -37,6 +37,7 @@ class Pipeline:
         self.save()
 
     def save(self):
+        self.state["model_calls"]=self.engineer.calls
         write_json(self.directory/"run.json",self.state)
 
     def context(self, hardware, design, geometry):
