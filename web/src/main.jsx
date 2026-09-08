@@ -190,7 +190,11 @@ function App() {
   const [geometry, setGeometry] = useState(null);
   const [versionId, setVersionId] = useState("");
   const [historical, setHistorical] = useState(null);
-  const [mode, setMode] = useState("Explore");
+  const [mode, setMode] = useState(() =>
+    new URLSearchParams(window.location.search).get("view") === "flight"
+      ? "Simulate"
+      : "Explore",
+  );
   const [explode, setExplode] = useState(0);
   const [inside, setInside] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -208,7 +212,14 @@ function App() {
   const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [perturbation, setPerturbation] = useState({});
-  const [environment, setEnvironment] = useState("airflow");
+  const [environment, setEnvironment] = useState("flight");
+  const [flightPlaying, setFlightPlaying] = useState(
+    () => !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  const [flightCamera, setFlightCamera] = useState("chase");
+  const [flightWorld, setFlightWorld] = useState("valley");
+  const [flightRate, setFlightRate] = useState(1);
+  const [flightReset, setFlightReset] = useState(0);
   const [labels, setLabels] = useState(true);
   const [wiring, setWiring] = useState(true);
   const [flow, setFlow] = useState(null);
@@ -538,6 +549,11 @@ function App() {
                 wiring,
                 environment,
                 flow: validFlow,
+                flightPlaying,
+                flightCamera,
+                flightWorld,
+                flightRate,
+                flightReset: `${runId}:${selectedVersion}:${flightReset}`,
               }}
               onSelect={setSelected}
               stepGroups={mode === "Assemble" ? stepInfo?.groups : null}
@@ -639,7 +655,60 @@ function App() {
           <span>ALBATROSS / MOTOR-GLIDER</span>
           <span className="draft-label">CAD CANDIDATE</span>
         </div>
-        {geometry && (
+        {geometry && mode === "Simulate" && environment === "flight" && (
+          <>
+            <div className="flight-world-note">
+              <span className={flightPlaying ? "live-dot" : "badge-dot"} />
+              {flightPlaying ? "ANIMATED FLIGHT" : "PAUSED"}
+              <span>
+                {counts.FAIL
+                  ? `${counts.FAIL} modeled checks FAIL · illustrative motion`
+                  : "Prescribed route · physical flight UNKNOWN"}
+              </span>
+            </div>
+            <div className="scene-controls flight-controls">
+              <button
+                onClick={() => setFlightPlaying((p) => !p)}
+                aria-label={
+                  flightPlaying
+                    ? "Pause flight animation"
+                    : "Play flight animation"
+                }
+              >
+                {flightPlaying ? <Pause size={13} /> : <Play size={13} />}
+              </button>
+              <button
+                aria-label="Restart flight animation"
+                onClick={() => setFlightReset((n) => n + 1)}
+              >
+                <RotateCcw size={13} />
+              </button>
+              {[
+                ["chase", "Chase"],
+                ["wing", "Wing"],
+                ["survey", "Survey"],
+              ].map(([id, name]) => (
+                <button
+                  key={id}
+                  className={flightCamera === id ? "active" : ""}
+                  onClick={() => setFlightCamera(id)}
+                >
+                  {name}
+                </button>
+              ))}
+              <select
+                aria-label="Animation speed"
+                value={flightRate}
+                onChange={(e) => setFlightRate(+e.target.value)}
+              >
+                <option value="1">1×</option>
+                <option value="3">3×</option>
+                <option value=".5">0.5×</option>
+              </select>
+            </div>
+          </>
+        )}
+        {geometry && !(mode === "Simulate" && environment === "flight") && (
           <div className="scene-controls">
             <button
               className={preset === "perspective" ? "active" : ""}
@@ -848,6 +917,20 @@ function App() {
                   </button>
                 ))}
               </div>
+              {environment === "flight" && (
+                <label className="recorded-cases">
+                  SCENERY / PRESENTATION ONLY
+                  <select
+                    aria-label="3D world"
+                    value={flightWorld}
+                    onChange={(e) => setFlightWorld(e.target.value)}
+                  >
+                    <option value="valley">Green valley</option>
+                    <option value="coast">Coastal airfield</option>
+                    <option value="ridge">Mountain ridge</option>
+                  </select>
+                </label>
+              )}
               <div className="condition-presets">
                 {[
                   [
@@ -1004,13 +1087,14 @@ function App() {
                 ) : (
                   <>
                     <p>
-                      Steady level trim at the recorded speed and atmospheric
-                      altitude.
+                      Animated circuit at {number(aero?.velocity_mps, 0)} m/s
+                      recorded airspeed · {flightRate}× playback.
                     </p>
                     <small>
-                      Terrain is illustrative, not surveyed or simulated. This
-                      is a static trim solution, not a flight trajectory or
-                      flight clearance.
+                      Prescribed 90 m radius route, 35 m scenic height. Terrain,
+                      bank and propeller motion are illustrative. Recorded trim
+                      checks do not validate this trajectory; physical flight
+                      remains UNKNOWN.
                     </small>
                   </>
                 )}
@@ -1263,7 +1347,7 @@ function App() {
           <span>
             {mode === "Simulate"
               ? environment === "flight"
-                ? "RECORDED TRIM / ILLUSTRATIVE TERRAIN"
+                ? "ILLUSTRATIVE FLIGHT / RECORDED ANALYSIS"
                 : environment === "structure"
                   ? "SPAR BENDING / IDEAL ROOT RESTRAINT"
                   : "COMPUTED VLM / UNBOUNDED INVISCID FLOW"

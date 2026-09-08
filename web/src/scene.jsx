@@ -9,6 +9,7 @@ import {
   OrbitControls,
 } from "@react-three/drei";
 import * as THREE from "three";
+import FlightWorld from "./flight-world.jsx";
 
 export const point = ([x, y, z]) => [y, z, 0.45 - x];
 const offsets = (part) =>
@@ -572,32 +573,21 @@ function Setting({ environment }) {
         ))}
       </group>
     );
-  if (environment === "flight")
-    return (
-      <group position={[0, -0.75, 0]}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <planeGeometry args={[100, 100]} />
-          <meshStandardMaterial color="#b4b99a" roughness={1} />
-        </mesh>
-        {Array.from({ length: 24 }, (_, i) => (
-          <mesh
-            key={i}
-            rotation={[-Math.PI / 2, 0, (i % 3) * 0.15]}
-            position={[((i % 6) - 2.5) * 2, 0.002, Math.floor(i / 6) * 2 - 4]}
-          >
-            <planeGeometry args={[1.85, 1.85]} />
-            <meshStandardMaterial
-              color={["#a4ad8c", "#c2bc98", "#b1b28c", "#a7b49a"][i % 4]}
-            />
-          </mesh>
-        ))}
-        <mesh position={[0, 0.005, -2]} rotation={[-Math.PI / 2, 0, 0.23]}>
-          <planeGeometry args={[12, 0.1]} />
-          <meshStandardMaterial color="#d1c7ac" />
-        </mesh>
-      </group>
-    );
   return null;
+}
+function SpinningPropeller({ part, playing, rate, children }) {
+  const rotor = useRef();
+  const center = point(part.centroid_m);
+  useFrame((_, delta) => {
+    if (playing) rotor.current.rotation.z += Math.min(delta, 0.1) * 40 * rate;
+  });
+  return (
+    <group position={center}>
+      <group ref={rotor}>
+        <group position={center.map((v) => -v)}>{children}</group>
+      </group>
+    </group>
+  );
 }
 export default function Scene({
   geometry,
@@ -614,16 +604,27 @@ export default function Scene({
   wiring,
   environment,
   flow,
+  flightPlaying,
+  flightCamera,
+  flightWorld,
+  flightRate,
+  flightReset,
 }) {
   const controls = useRef();
   const sim = mode === "Simulate";
   const dark = sim && environment !== "flight";
+  const flight = sim && environment === "flight";
   const aero = evidence.find((e) => e.method === "aero")?.output.raw,
     structure = evidence.find((e) => e.method === "structure")?.output.raw;
   return (
     <Canvas
       shadows
-      camera={{ position: [1.75, 1.2, 2], fov: 36, near: 0.01, far: 150 }}
+      camera={{
+        position: [1.75, 1.2, 2],
+        fov: flight ? 46 : 36,
+        near: 0.01,
+        far: flight ? 3000 : 150,
+      }}
       dpr={[1, 2]}
       onPointerMissed={() => onSelect(null)}
       gl={{
@@ -632,19 +633,17 @@ export default function Scene({
         toneMappingExposure: 0.95,
       }}
     >
-      <color
-        attach="background"
-        args={[dark ? "#182c35" : sim ? "#dce6df" : "#edf0e8"]}
-      />
-      <fog
-        attach="fog"
-        args={[dark ? "#182c35" : sim ? "#dce6df" : "#edf0e8", 5, 20]}
-      />
-      <ambientLight intensity={dark ? 0.45 : 0.65} />
-      <hemisphereLight args={["#fff9e9", "#768879", 1.2]} />
+      {!flight && (
+        <>
+          <color attach="background" args={[dark ? "#182c35" : "#edf0e8"]} />
+          <fog attach="fog" args={[dark ? "#182c35" : "#edf0e8", 5, 20]} />
+        </>
+      )}
+      <ambientLight intensity={flight ? 0.15 : dark ? 0.45 : 0.65} />
+      <hemisphereLight args={["#fff9e9", "#768879", flight ? 0 : 1.2]} />
       <directionalLight
         position={[-2, 4, 3]}
-        intensity={2}
+        intensity={flight ? 0 : 2}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-2}
@@ -653,7 +652,11 @@ export default function Scene({
         shadow-camera-bottom={-2}
         shadow-bias={-0.0002}
       />
-      <directionalLight position={[2, 1, -2]} intensity={1.2} color="#c9e8ec" />
+      <directionalLight
+        position={[2, 1, -2]}
+        intensity={flight ? 0 : 1.2}
+        color="#c9e8ec"
+      />
       <Suspense fallback={null}>
         <Environment resolution={128} frames={1}>
           <Lightformer
@@ -670,16 +673,53 @@ export default function Scene({
           />
           <Lightformer position={[2, 2, -3]} scale={[4, 2, 1]} intensity={2} />
         </Environment>
-        {geometry.parts.map((part) => (
-          <Part
-            key={part.id}
-            {...{ part, explode, inside, onSelect, stepGroups }}
-            selected={selected?.id}
-            analysis={sim ? environment : null}
-          />
-        ))}
+        {flight ? (
+          <FlightWorld
+            {...{ aero }}
+            playing={flightPlaying}
+            cameraMode={flightCamera}
+            world={flightWorld}
+            rate={flightRate}
+            resetKey={flightReset}
+          >
+            {geometry.parts.map((part) =>
+              part.id === "propeller" ? (
+                <SpinningPropeller
+                  key={`${part.id}:${flightReset}`}
+                  part={part}
+                  playing={flightPlaying}
+                  rate={flightRate}
+                >
+                  <Part
+                    {...{ part, onSelect }}
+                    explode={0}
+                    inside={false}
+                    selected={selected?.id}
+                  />
+                </SpinningPropeller>
+              ) : (
+                <Part
+                  key={part.id}
+                  {...{ part, onSelect }}
+                  explode={0}
+                  inside={false}
+                  selected={selected?.id}
+                />
+              ),
+            )}
+          </FlightWorld>
+        ) : (
+          geometry.parts.map((part) => (
+            <Part
+              key={part.id}
+              {...{ part, explode, inside, onSelect, stepGroups }}
+              selected={selected?.id}
+              analysis={sim ? environment : null}
+            />
+          ))
+        )}
         {!sim && <Details {...{ geometry, explode, labels, wiring, inside }} />}
-        {sim && (
+        {sim && !flight && (
           <>
             <Setting environment={environment} />
             {environment === "airflow" ? (
@@ -713,16 +753,20 @@ export default function Scene({
           position={[0, -0.115, 0]}
         />
       )}
-      <OrbitControls
-        ref={controls}
-        target={[0, 0.07, 0]}
-        minDistance={0.25}
-        maxDistance={5}
-        autoRotate={autoRotate}
-        autoRotateSpeed={0.5}
-        maxPolarAngle={Math.PI * 0.49}
-      />
-      <Camera preset={preset} controls={controls} />
+      {!flight && (
+        <>
+          <OrbitControls
+            ref={controls}
+            target={[0, 0.07, 0]}
+            minDistance={0.25}
+            maxDistance={5}
+            autoRotate={autoRotate}
+            autoRotateSpeed={0.5}
+            maxPolarAngle={Math.PI * 0.49}
+          />
+          <Camera preset={preset} controls={controls} />
+        </>
+      )}
     </Canvas>
   );
 }

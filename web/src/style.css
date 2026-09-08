@@ -1395,3 +1395,94 @@ code {
     inset: 0;
   }
 }
+.flight-simulation .intro {
+  padding: 20px;
+  top: 43px;
+  left: 22px;
+  background: #f0f3e9dc;
+  border: 1px solid #e0e8d3aa;
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+.flight-simulation .scene-top {
+  background: #f0f3e9da;
+  padding: 8px 10px;
+  border-radius: 4px;
+}
+.flight-simulation .inspector {
+  background: #f4f6efed;
+}
+.flight-world-note {
+  position: absolute;
+  bottom: 125px;
+  left: 37%;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 12px;
+  color: #e7efe8;
+  background: #213b42d9;
+  border-radius: 4px;
+  font-size: 9px;
+}
+.flight-world-note > span:last-child {
+  font-size: 8px;
+  color: #b7cbc5;
+}
+.flight-controls {
+  left: 40%;
+  background: #f2f5e9ed;
+}
+.flight-controls select {
+  background: transparent;
+  border: 0;
+  padding: 0 7px;
+  color: inherit;
+  font-family: inherit;
+  font-size: 10px;
+}
+.flight-simulation .scene-caption {
+  padding: 7px 10px;
+  background: #f0f3e9d9;
+  border-radius: 3px;
+  color: #496358;
+}
+@media (max-width: 760px) {
+  .flight-simulation .intro {
+    padding: 0;
+    top: 23px;
+    left: 23px;
+    background: transparent;
+    border: 0;
+    backdrop-filter: none;
+  }
+  .flight-world-note {
+    left: 50%;
+    transform: translateX(-50%);
+    top: 571px;
+    bottom: auto;
+    white-space: nowrap;
+    padding: 7px;
+    font-size: 8px;
+  }
+  .flight-world-note > span:last-child {
+    display: none;
+  }
+  .flight-controls {
+    left: 50%;
+  }
+}
+@media (min-width: 761px) {
+  .flight-simulation .intro {
+    width: 300px;
+    padding: 16px;
+  }
+  .flight-simulation .intro h1 {
+    font-size: 40px;
+    letter-spacing: -1.8px;
+    margin: 20px 0;
+  }
+  .flight-simulation .intro .v-trace {
+    margin-top: 26px;
+  }
+}

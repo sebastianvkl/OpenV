@@ -305,3 +305,9 @@ The user approved implementation with "Go ahead". Proceed through P0 autonomousl
 - [x] Add speed, atmospheric altitude and structural-load presets through existing mission amendment / Dalus / verification pipeline.
 - [x] Test atmosphere sensitivity, trim provenance, output integrity, finite panel residuals and strict operating-case comparison (31 regression tests covered).
 - [x] Publish cruise, slow-flight, 2,000 m altitude and 4 g load cases; verify all 252 package hashes, matching Dalus commits and deployed desktop/mobile switching.
+
+### Animated 3D flight world
+
+- [x] Add procedural valley/coast/ridge scenery, airfield, trees, water and distant hills around the real CAD aircraft.
+- [x] Add prescribed-route animation, chase/wing/survey cameras, play/pause, restart and playback rate; keep physical flight UNKNOWN.
+- [ ] Verify motion, pause, case switching and mobile layout, then publish the updated website.
