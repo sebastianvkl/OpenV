@@ -424,6 +424,9 @@ function App() {
         if (cancelled) return;
         setConfig(c);
         setRuns(r);
+        setError((previous) =>
+          /Failed to fetch|NetworkError/.test(previous) ? "" : previous,
+        );
         if (!runId && r.length) setRunId(r[0].id);
       } catch (e) {
         if (!cancelled) setError(e.message);
@@ -492,12 +495,18 @@ function App() {
     };
   }, [runId, versionId]);
   useEffect(() => {
-    if (run?.assembly_file)
+    let cancelled = false;
+    if (run?.assembly_file && !versionId)
       api(url(runId, run.assembly_file))
-        .then(setAssembly)
+        .then((value) => {
+          if (!cancelled) setAssembly(value);
+        })
         .catch(() => {});
     else setAssembly(null);
-  }, [runId, run?.assembly_file]);
+    return () => {
+      cancelled = true;
+    };
+  }, [runId, run?.assembly_file, versionId]);
   useEffect(() => {
     if (!playing || !assembly) return;
     const id = setInterval(
@@ -1140,7 +1149,16 @@ function App() {
               ))}
             </select>
           )}
-          {run?.package_file ? (
+          {versionId ? (
+            <a
+              className="download"
+              href={url(runId, `${versionId}/cad/aircraft.step`)}
+              download
+            >
+              <Download size={15} /> Selected version CAD
+              <span>HISTORICAL STEP</span>
+            </a>
+          ) : run?.package_file ? (
             <a
               className="download"
               href={url(runId, run.package_file)}

@@ -58,7 +58,7 @@ class AstraEngineer:
             raw=self.client.responses.with_raw_response.parse(model=self.model,
                 instructions=INSTRUCTIONS,input=json.dumps(task,allow_nan=False),
                 text_format=schema,reasoning={"effort":"high"},max_output_tokens=6000)
-            body=raw.json()
+            body=raw.http_response.json()
             record={"response_id":body.get("id"),"model":body.get("model"),
                 "usage":body.get("usage"),"validation":"pending"}
             self.calls.append(record)
