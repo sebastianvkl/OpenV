@@ -718,6 +718,13 @@ function App() {
                   : "RECORDED ENGINEERING RUN"}
               </span>
               <p>{run.provider}</p>
+              {run.system?.scenario && (
+                <p className="mission-facts">
+                  {number(run.system.scenario.payload_kg * 1000, 0)} g payload
+                  {" · "}{number(run.system.scenario.cruise_mps, 0)} m/s
+                  {" · "}{number(run.system.scenario.endurance_min, 0)} min target
+                </p>
+              )}
               <small>
                 {isRunning ? (
                   <>
