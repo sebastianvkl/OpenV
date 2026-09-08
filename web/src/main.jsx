@@ -910,7 +910,7 @@ function App() {
                     onChange={(e) => chooseRun(e.target.value)}
                   >
                     <option value="" disabled>
-                      Select a verified run
+                      Select computed results
                     </option>
                     {recordedCases.map((c) => (
                       <option key={c.id} value={c.id}>

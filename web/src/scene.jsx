@@ -108,7 +108,6 @@ function componentTexture(part) {
       24,
       155,
     );
-    for (let x = 360; x < 480; x += 5) ctx.fillRect(x, 175, (x % 3) + 1, 30);
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
