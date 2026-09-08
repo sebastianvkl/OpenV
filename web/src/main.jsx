@@ -824,7 +824,7 @@ function App() {
                   href={url(runId, `${selectedVersion}/${selected.file}`)}
                   download
                 >
-                  Download part STL <Download size={13} />
+                  Download part {selected.file.endsWith(".step") ? "STEP" : "STL"} <Download size={13} />
                 </a>
               )}
             </>
@@ -1376,6 +1376,9 @@ function App() {
                           <small>{c.scope}</small>
                         </p>
                       ))}
+                      {requirement?.contracts.length === 0 && (
+                        <p>No verification contract covers this clause yet. Its status remains UNKNOWN.</p>
+                      )}
                       {e.reasons.map((reason, i) => (
                         <p key={i}>{reason}</p>
                       ))}
