@@ -1679,3 +1679,31 @@ code {
 .environment-tabs {
   flex-wrap: wrap;
 }
+
+.assembly-view-switch { margin-bottom: 20px; }
+.step-source-note { position:absolute; z-index:3; bottom:154px; left:50%; transform:translateX(-50%); max-width:calc(100% - 680px); padding:10px 15px; border:1px solid #c4cec0; border-radius:5px; background:#edf1e6ed; color:#395647; font-size:10px; text-align:center; pointer-events:none; }
+.step-source-note.error { color:#a45d46; }
+.step-inspector { padding-bottom:18px; border-bottom:1px solid #d8dfd2; margin-bottom:20px; }
+.step-reader-state { font-size:9px; color:#778570; }
+.step-reader-state.ready { color:#315d49; }
+.step-reader-state.error { color:#a45d46; }
+.step-file-summary { display:flex; flex-wrap:wrap; gap:8px 12px; font-size:10px; margin:16px 0; }
+.step-progress { font-size:11px; line-height:1.6; color:#73816d; }
+.cad-display-controls { display:flex; flex-wrap:wrap; gap:12px; margin:17px 0; }
+.cad-display-controls label { display:flex; align-items:center; gap:5px; font-size:10px; }
+.cad-display-controls input { accent-color:#315d49; }
+.step-download { display:flex; align-items:center; gap:8px; font-size:11px; padding:11px 0; margin-bottom:16px; }
+.component-gallery { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+.component-gallery button { display:flex; flex-direction:column; min-width:0; background:#f8faf5; border:1px solid #d8dfd2; border-radius:5px; padding:8px; text-align:left; }
+.component-gallery button:hover { border-color:#73917e; }
+.component-gallery img { width:100%; height:76px; object-fit:contain; background:white; border-radius:3px; }
+.component-gallery b { font-size:9px; font-weight:500; margin-top:8px; line-height:1.4; }
+.reference-missing { display:grid; place-items:center; height:76px; width:100%; font-size:9px; color:#8a9486; background:#edf1e7; }
+.component-reference { margin:16px 0; }
+.component-reference a { display:block; font-size:10px; }
+.component-reference img { width:100%; height:160px; object-fit:contain; background:#fff; border-radius:5px; }
+.component-reference a>span { display:block; margin-top:6px; }
+.step-import-details { font-size:10px; margin-top:14px; }
+.step-import-details code { display:block; word-break:break-all; font-size:8px; margin:12px 0; }
+.step-inspector .experiment-slider small { display:block; font-size:9px; color:#8a9486; }
+@media(max-width:900px) { .step-source-note { display:none; } }

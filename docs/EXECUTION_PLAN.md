@@ -346,3 +346,14 @@ Live installation acceptance: `run-dcef3705d89d` used actual Astra and the exist
 Animated-response browser acceptance: power-off playback shows computed height/airspeed and zero commanded thrust after 5 s; banking/crosswind switch correctly, pause freezes telemetry, source output downloads, and desktop/mobile layouts have no overflow or JavaScript errors. The duplicate local fixture was explicitly stopped during its third CAD build after validating the earlier trajectory artifacts; it is marked INTERRUPTED/UNKNOWN, not a completed run. Final response/package acceptance uses a fresh verification of the repaired live aircraft. A regression also ensures the public Dalus commit indicator returns to defined/pending during redesign rather than retaining the previous evaluated marker.
 
 Final deployed acceptance: `run-365c68904f40` reverified the unchanged Astra-repaired candidate and generated four COMPUTED point-mass responses. It reused every existing part, design-variable, requirement and test-case ID in the same Dalus model; all previous test runs remained, with 88 history rows after completion. Results remain 16 PASS / 0 FAIL / 8 UNKNOWN, with all 70 package hashes verified. At 25 s the diagnostic height changes are 0 m in trim hold, −16.62 m after power-off at 5 s, −3.46 m under the prescribed bank and 0 m under uniform crosswind advection. These are model predictions, not physical flight evidence. The complete regression suite passes 45 tests.
+
+
+### Browser STEP assembly viewer (user request)
+
+- [x] Read the selected design's actual assembly STEP in a browser worker; preserve hierarchy identities, meters and frozen component metadata. Keep loading/error previews explicit.
+- [x] Add Assemble → STEP CAD alongside Assembly guide, with CAD edges, isolation, exploded view, section cuts and matching assembly download.
+- [x] Add manufacturer reference photos for the selected motor, propeller, receiver and servo. Disclose purchased envelopes and missing vendor internals; no invented detailed vendor CAD.
+- [x] Unit-check hierarchy identity, duplicate/missing parts, wrong placement/units, nonfinite coordinates and malformed faces (four tests). Local browser acceptance imported all 45 parts, exercised specification links, isolation, custom part downloads, section cuts, guide navigation, cached revisits and mobile layout without JavaScript errors.
+- [ ] Verify final Vercel deployment, version switching and existing flight playback.
+
+First local browser import took 48.6 seconds for the 11.6 MB fixture; cached revisits avoid parsing. Browser tessellation is presentation only and leaves requirements, Dalus and package evidence unchanged.

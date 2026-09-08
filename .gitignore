@@ -15,3 +15,5 @@ artifacts/
 .vercel/
 .vercel
 .env*
+
+web/public/cad-kernel/

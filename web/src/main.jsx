@@ -1,3 +1,5 @@
+import useStepModel from "./use-step-model.js";
+import { StepInspector } from "./step-inspector.jsx";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import Scene from "./scene.jsx";
@@ -190,12 +192,23 @@ function App() {
   );
   const [run, setRun] = useState(null);
   const [geometry, setGeometry] = useState(null);
+  const [geometrySource, setGeometrySource] = useState(null);
   const [versionId, setVersionId] = useState("");
   const [historical, setHistorical] = useState(null);
+  const [assemblyView, setAssemblyView] = useState("cad");
+  const [cadEdges, setCadEdges] = useState(true),
+    [isolate, setIsolate] = useState(false);
+  const [section, setSection] = useState(false),
+    [sectionZ, setSectionZ] = useState(0.03),
+    [stepRetry, setStepRetry] = useState(0);
   const [mode, setMode] = useState(() =>
     new URLSearchParams(window.location.search).get("view") === "flight"
       ? "Simulate"
-      : "Explore",
+      : ["assemble", "step"].includes(
+            new URLSearchParams(window.location.search).get("view"),
+          )
+        ? "Assemble"
+        : "Explore",
   );
   const [explode, setExplode] = useState(0);
   const [inside, setInside] = useState(false);
@@ -331,13 +344,18 @@ function App() {
   useEffect(() => {
     if (!geometryFile || !runId) {
       setGeometry(null);
+      setGeometrySource(null);
       return;
     }
     let cancel = false;
+    setGeometry(null);
+    setGeometrySource(null);
+    setSelected(null);
     api(url(runId, geometryFile))
       .then((g) => {
         if (!cancel) {
           setGeometry(g);
+          setGeometrySource(`${runId}:${geometryFile}`);
           setSelected(null);
         }
       })
@@ -427,6 +445,14 @@ function App() {
       ? response
       : null;
   const trajectory = validResponse?.cases?.find((c) => c.id === responseCase);
+  const stepActive = mode === "Assemble" && assemblyView === "cad";
+  const stepUrl =
+    runId && version && geometrySource === `${runId}:${geometryFile}`
+      ? url(runId, `${selectedVersion}/cad/aircraft.step`)
+      : null;
+  const stepModel = useStepModel(stepActive, stepUrl, geometry, stepRetry);
+  const displayGeometry =
+    stepActive && stepModel.status === "ready" ? stepModel.geometry : geometry;
   const stepInfo = assembly?.steps[step];
   const installation = evidence.find((e) => e.method === "installation")?.output
     .raw;
@@ -533,7 +559,8 @@ function App() {
               onClick={() => {
                 setMode(m);
                 setSelected(null);
-                if (m === "Assemble") setExplode(0.7);
+                if (m === "Assemble")
+                  setExplode(assemblyView === "guide" ? 0.7 : 0);
                 else setExplode(0);
                 if (m === "Simulate") setInside(false);
               }}
@@ -559,7 +586,7 @@ function App() {
           {geometry ? (
             <Scene
               {...{
-                geometry,
+                geometry: displayGeometry,
                 explode,
                 inside,
                 selected,
@@ -580,6 +607,11 @@ function App() {
                 flightReset: `${runId}:${selectedVersion}:${flightReset}:${responseCase}`,
                 trajectory,
                 onFlightSample: setFlightSample,
+                stepMode: stepActive,
+                cadEdges,
+                isolate,
+                section,
+                sectionZ,
               }}
               onSelect={(part) => {
                 setSelected(part);
@@ -588,7 +620,9 @@ function App() {
                   setAutoRotate(false);
                 }
               }}
-              stepGroups={mode === "Assemble" ? stepInfo?.groups : null}
+              stepGroups={
+                mode === "Assemble" && !stepActive ? stepInfo?.groups : null
+              }
             />
           ) : (
             <div className="empty-scene">
@@ -683,6 +717,15 @@ function App() {
             </div>
           )}
         </aside>
+        {stepActive && geometry && (
+          <div className={`step-source-note ${stepModel.status}`} role="status">
+            {stepModel.status === "ready"
+              ? `STEP CAD · ${stepModel.geometry.parts.length} named parts · ${stepModel.faces.toLocaleString()} faces`
+              : stepModel.status === "error"
+                ? "STEP unavailable · captured mesh preview"
+                : `${stepModel.stage || "Preparing STEP"} · captured mesh preview`}
+          </div>
+        )}
         <div className="scene-top">
           <span>ALBATROSS / MOTOR-GLIDER</span>
           <span className="draft-label">CAD CANDIDATE</span>
@@ -785,6 +828,32 @@ function App() {
           </div>
         )}
         <aside className="inspector">
+          {mode === "Assemble" && (
+            <div
+              className="environment-tabs assembly-view-switch"
+              aria-label="Assembly view"
+            >
+              {[
+                ["cad", "STEP CAD"],
+                ["guide", "Assembly guide"],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  className={assemblyView === id ? "active" : ""}
+                  onClick={() => {
+                    setAssemblyView(id);
+                    setSelected(null);
+                    setPlaying(false);
+                    setExplode(id === "cad" ? 0 : 0.7);
+                    setIsolate(false);
+                    setSection(false);
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           {geometry && (
             <label className="component-picker">
               Inspect a component
@@ -793,7 +862,7 @@ function App() {
                 value={selected?.id || ""}
                 onChange={(event) => {
                   setSelected(
-                    geometry.parts.find(
+                    displayGeometry.parts.find(
                       (part) => part.id === event.target.value,
                     ) || null,
                   );
@@ -811,6 +880,29 @@ function App() {
             </label>
           )}
 
+          {stepActive && (
+            <StepInspector
+              state={stepModel}
+              url={stepUrl}
+              selected={selected}
+              geometry={displayGeometry}
+              edges={cadEdges}
+              setEdges={setCadEdges}
+              isolate={isolate}
+              setIsolate={setIsolate}
+              section={section}
+              setSection={setSection}
+              sectionZ={sectionZ}
+              setSectionZ={setSectionZ}
+              explode={explode}
+              setExplode={setExplode}
+              retry={() => setStepRetry((n) => n + 1)}
+              onSelect={(part) => {
+                setSelected(part);
+                setAutoRotate(false);
+              }}
+            />
+          )}
           {selected ? (
             <ComponentDetails
               part={selected}
@@ -1416,7 +1508,7 @@ function App() {
                 Each result applies to its recorded assumptions.
               </p>
             </>
-          ) : (
+          ) : stepActive ? null : (
             <>
               <div className="panel-heading">
                 <span>GUIDED ASSEMBLY</span>
@@ -1541,7 +1633,9 @@ function App() {
                     ? "SOLID INTERSECTION / DECLARED INSERTION SEQUENCE"
                     : "COMPUTED VLM / UNBOUNDED INVISCID FLOW"
               : mode === "Assemble"
-                ? "ASSEMBLY SEQUENCE / VERIFICATION OPEN"
+                ? stepActive
+                  ? "EXPORTED CAD / INSPECTION DOES NOT GRANT PASS"
+                  : "ASSEMBLY SEQUENCE / VERIFICATION OPEN"
                 : "PARAMETRIC CAD / CANONICAL ENGINEERING STATE"}
           </span>
         </div>

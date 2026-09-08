@@ -82,3 +82,12 @@ The [computed cruise case](https://openv-kohl.vercel.app/?run=run-11489fb9d56e) 
 The flow artifact is bound to the exact trim evidence, design and inputs and included in the candidate-package hash manifest. VLM is a coarse inviscid lifting-surface diagnostic; the UI exposes its disagreement with the AeroBuildup trim model. It is not CFD, a stall prediction or physical flight validation. Structural views use the recorded idealized spar calculation; flight scenery and wiring routes are illustrative. None of these rendering improvements changes a requirement verdict.
 
 The [animated 3D world](https://openv-kohl.vercel.app/?run=run-11489fb9d56e&view=flight) places the actual CAD aircraft in valley, coastal or mountain scenery. Choose Chase, Wing or Survey; pause, restart or change playback speed. Its prescribed circuit is illustrative and never supplies flight-verification evidence.
+
+
+## Inspect the assembly STEP
+
+Open the [45-part assembly](https://openv-kohl.vercel.app/?run=run-365c68904f40&view=assemble), then use **STEP CAD** under **Assemble**. The browser reads the exported STEP in a worker while keeping a labeled mesh preview visible. First import can take tens of seconds; the two most recent imports are cached in memory. Select a part to inspect its frozen specifications and source/buy links, isolate it, show CAD edges, explode the assembly or make an uncapped section cut. **Assembly guide** retains the tools, hardware and sequence view.
+
+Custom parts show generated CAD detail. Purchased components currently use envelopes, with manufacturer reference photos where available; detailed vendor CAD and unmodeled connectors/internals are not included. Viewing a solid creates no new engineering evidence.
+
+The browser STEP reader is the separately loaded, unmodified `occt-import-js@0.0.23` (LGPL-2.1), prepared by `npm run build` or `npm run dev`. Its license and pinned upstream source/build link are served at `/cad-kernel/NOTICE.txt`. Compatible JS/WASM builds can replace the files in that directory. Run the viewer identity/placement checks with `npm test --prefix web`.

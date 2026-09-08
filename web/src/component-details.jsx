@@ -1,3 +1,4 @@
+import ComponentReference from "./component-reference.jsx";
 import React from "react";
 import { ArrowUpRight, Download, ExternalLink, X } from "lucide-react";
 
@@ -120,6 +121,7 @@ export default function ComponentDetails({ part, downloadUrl, onClose }) {
           <code>{component.part_number || "Part selection pending"}</code>
         </div>
       )}
+      <ComponentReference part={part} />
       {store ? (
         <a
           className="component-buy"

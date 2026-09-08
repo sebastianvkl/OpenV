@@ -125,6 +125,8 @@ function Part({
   stepGroups,
   analysis,
   failed,
+  edges = false,
+  clippingPlanes = [],
 }) {
   const ref = useRef();
   const texture = useMemo(
@@ -161,8 +163,24 @@ function Part({
     }
     g.setAttribute("position", new THREE.Float32BufferAttribute(p, 3));
     g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
-    g.setIndex(part.mesh.indices);
-    g.computeVertexNormals();
+    if (part.mesh.normals) {
+      // point() includes a reflection; reverse winding and transform CAD normals.
+      const indices = Array.from(part.mesh.indices),
+        normals = [];
+      for (let i = 0; i < indices.length; i += 3)
+        [indices[i + 1], indices[i + 2]] = [indices[i + 2], indices[i + 1]];
+      for (let i = 0; i < part.mesh.normals.length; i += 3)
+        normals.push(
+          part.mesh.normals[i + 1],
+          part.mesh.normals[i + 2],
+          -part.mesh.normals[i],
+        );
+      g.setIndex(indices);
+      g.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+    } else {
+      g.setIndex(Array.from(part.mesh.indices));
+      g.computeVertexNormals();
+    }
     return g;
   }, [part]);
   useEffect(
@@ -172,6 +190,11 @@ function Part({
     },
     [geometry, texture],
   );
+  const edgeGeometry = useMemo(
+    () => (edges ? new THREE.EdgesGeometry(geometry, 25) : null),
+    [geometry, edges],
+  );
+  useEffect(() => () => edgeGeometry?.dispose(), [edgeGeometry]);
   const offset = offsets(part);
   useFrame((_, delta) =>
     ref.current?.position.lerp(
@@ -218,6 +241,7 @@ function Part({
       }}
     >
       <meshPhysicalMaterial
+        clippingPlanes={clippingPlanes}
         color={
           part.process === "purchase" &&
           texture &&
@@ -252,10 +276,20 @@ function Part({
         depthWrite={!faded && !inactive}
         side={THREE.DoubleSide}
       />
+      {edgeGeometry && (
+        <lineSegments geometry={edgeGeometry} raycast={() => null}>
+          <lineBasicMaterial
+            color={selected === part.id ? "#a55b27" : "#50645c"}
+            transparent
+            opacity={faded ? 0.15 : 0.42}
+            clippingPlanes={clippingPlanes}
+          />
+        </lineSegments>
+      )}
     </mesh>
   );
 }
-function Camera({ preset, controls }) {
+function Camera({ preset, controls, focus, explode }) {
   const { camera } = useThree();
   useEffect(() => {
     const positions = {
@@ -265,11 +299,26 @@ function Camera({ preset, controls }) {
       detail: [0.52, 0.45, 0.72],
     };
     const target = preset === "detail" ? [0, 0.05, 0.12] : [0, 0.07, 0];
+    if (focus) {
+      const center = point(focus.centroid_m).map(
+        (v, i) => v + offsets(focus)[i] * (explode || 0),
+      );
+      const size = Math.max(...focus.dimensions_m) * 2.1;
+      camera.position.set(
+        center[0] + size,
+        center[1] + size * 0.7,
+        center[2] + size,
+      );
+      camera.lookAt(...center);
+      controls.current?.target.set(...center);
+      controls.current?.update();
+      return;
+    }
     camera.position.set(...positions[preset]);
     camera.lookAt(...target);
     controls.current?.target.set(...target);
     controls.current?.update();
-  }, [preset]);
+  }, [preset, focus?.id, !!focus, focus ? explode : null]);
   return null;
 }
 function Label({ position, children, dark = false }) {
@@ -631,8 +680,24 @@ export default function Scene({
   flightReset,
   trajectory,
   onFlightSample,
+  stepMode = false,
+  cadEdges = false,
+  isolate = false,
+  section = false,
+  sectionZ = 0.03,
 }) {
   const controls = useRef();
+  const clippingPlanes = useMemo(
+    () =>
+      stepMode && section
+        ? [new THREE.Plane(new THREE.Vector3(0, -1, 0), sectionZ)]
+        : [],
+    [stepMode, section, sectionZ],
+  );
+  const visibleParts =
+    stepMode && isolate && selected
+      ? geometry.parts.filter((p) => p.id === selected.id)
+      : geometry.parts;
   const collided = new Set(
     installation?.available
       ? [
@@ -652,13 +717,14 @@ export default function Scene({
       camera={{
         position: [1.75, 1.2, 2],
         fov: flight ? 46 : 36,
-        near: 0.01,
+        near: stepMode ? 0.001 : 0.01,
         far: flight ? 3000 : 150,
       }}
       dpr={[1, 2]}
       onPointerMissed={() => onSelect(null)}
       gl={{
         antialias: true,
+        localClippingEnabled: true,
         toneMapping: THREE.ACESFilmicToneMapping,
         toneMappingExposure: 0.95,
       }}
@@ -740,10 +806,18 @@ export default function Scene({
             )}
           </FlightWorld>
         ) : (
-          geometry.parts.map((part) => (
+          visibleParts.map((part) => (
             <Part
               key={part.id}
-              {...{ part, explode, inside, onSelect, stepGroups }}
+              {...{
+                part,
+                explode,
+                inside,
+                onSelect,
+                stepGroups,
+                clippingPlanes,
+              }}
+              edges={stepMode && cadEdges}
               selected={selected?.id}
               analysis={sim ? environment : null}
               failed={
@@ -752,7 +826,9 @@ export default function Scene({
             />
           ))
         )}
-        {!sim && <Details {...{ geometry, explode, labels, wiring, inside }} />}
+        {!sim && !stepMode && (
+          <Details {...{ geometry, explode, labels, wiring, inside }} />
+        )}
         {sim && !flight && (
           <>
             <Setting environment={environment} />
@@ -794,13 +870,18 @@ export default function Scene({
           <OrbitControls
             ref={controls}
             target={[0, 0.07, 0]}
-            minDistance={0.25}
+            minDistance={stepMode ? 0.008 : 0.25}
             maxDistance={5}
             autoRotate={autoRotate}
             autoRotateSpeed={0.5}
-            maxPolarAngle={Math.PI * 0.49}
+            maxPolarAngle={stepMode ? Math.PI : Math.PI * 0.49}
           />
-          <Camera preset={preset} controls={controls} />
+          <Camera
+            preset={preset}
+            controls={controls}
+            focus={stepMode && isolate ? selected : null}
+            explode={explode}
+          />
         </>
       )}
     </Canvas>
