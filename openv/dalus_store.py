@@ -292,3 +292,12 @@ class DalusStore:
                 if len(matches)!=1:raise RuntimeError("Dalus experiment record missing or ambiguous")
                 await self.write(s,[op("updateTradeStudy",id=matches[0]["id"],description=json.dumps(experiment.model_dump()))])
         return asyncio.run(record())
+
+    def record_user_experiment(self,experiment):
+        async def record():
+            async with session() as s:
+                await self.write(s,[op("addTradeStudy",title=f"OpenV experiment / {experiment.id}",
+                    description=json.dumps(experiment.model_dump()),alternatives=[
+                        {"name":experiment.from_design,"description":"Parent run; historical evidence is not current for this candidate"},
+                        {"name":experiment.to_design,"description":"User-requested mission/design change with recomputed evidence"}])])
+        return asyncio.run(record())

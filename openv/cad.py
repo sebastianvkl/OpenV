@@ -27,7 +27,7 @@ def build(parameters: dict, mission: dict, output_dir: Path) -> dict:
     parts, shapes = [], []
     sourced_parts={c.id:c for c in catalog()}
 
-    def add(id, label, shape, group, process="print", mass_kg=None, color="#e2e9df", note=""):
+    def add(id, label, shape, group, process="print", mass_kg=None, color="#e2e9df", note="", stock=None):
         shape.label = id
         shape_valid = bool(shape.is_valid)
         box = shape.bounding_box()
@@ -43,11 +43,14 @@ def build(parameters: dict, mission: dict, output_dir: Path) -> dict:
               "indices":[int(n) for face in faces for n in face]}
         if process == "print":
             export_stl(shape,str(cad_dir/f"{id}.stl"))
+        elif process.startswith("cut-"):
+            export_step(shape,str(cad_dir/f"{id}.step"))
         parts.append({"id":id,"name":label,"group":group,"process":process,"mass_kg":mass,
             "mass_quality":"computed with assumed material density" if mass_kg is None else "allocated; see source catalog",
             "dimensions_m":dimensions,"centroid_m":centroid,"color":color,"valid":shape_valid,
             "volume_m3":float(shape.volume)*1e-9,"mesh":mesh,"note":note,
-            "file":f"cad/{id}.stl" if process=="print" else None})
+            "stock":stock or {},
+            "file":f"cad/{id}.stl" if process=="print" else f"cad/{id}.step" if process.startswith("cut-") else None})
         if component:
             parts[-1]["component"]=component.model_dump()
         shapes.append(shape)
@@ -127,7 +130,9 @@ def build(parameters: dict, mission: dict, output_dir: Path) -> dict:
                 end[1]*=sign
                 spar=tube(start,end,p["spar_od_m"],p["spar_wall_m"])
                 add(f"spar-{side}",f"Carbon spar {side}",spar,"structure","cut-carbon",color="#283934",
-                    note="Tube stock selection and center joint adequacy UNKNOWN; cut length is CAD length.")
+                    note="Tube stock selection and center joint adequacy UNKNOWN; cut length is CAD length.",
+                    stock={"length_mm":float(np.linalg.norm(np.array(end)-np.array(start)))*1000,
+                        "outer_diameter_mm":p["spar_od_m"]*1000,"wall_mm":p["spar_wall_m"]*1000})
 
     # Fin uses the same section coordinates as the aero model.
     fin_sections=[([.87,0,.07],.15),([.94,0,.24],.075)]
@@ -160,17 +165,18 @@ def build(parameters: dict, mission: dict, output_dir: Path) -> dict:
         segment=pod & cutter
         add(f"pod-{i+1}",f"Fuselage shell {i+1}",segment,"fuselage",color="#eef0e5",
             note="Candidate shell with top access opening. Seam joint and local reinforcement checks remain open.")
-    add("boom","Carbon tail boom",tube([.54,0,.025],[.99,0,.07],.012,.001),"structure","cut-carbon",color="#263b33")
+    add("boom","Carbon tail boom",tube([.54,0,.025],[.99,0,.07],.012,.001),"structure","cut-carbon",color="#263b33",
+        stock={"length_mm":math.hypot(450,45),"outer_diameter_mm":12,"wall_mm":1})
     pylon_profile=Wire.make_polygon([(500,-3,35),(602,-3,35),(569,-3,208),(551,-3,208)],close=True)
     from build123d import Face
     pylon=Solid.extrude(Face(pylon_profile),(0,6,0))
     add("motor-pylon","6 mm plywood motor pylon",pylon,"power","cut-plywood",
-        note="Cut profile candidate; plywood grain direction, root fastening and load validation remain open.",color="#b59b70")
+        note="Cut profile candidate; plywood grain direction, root fastening and load validation remain open.",color="#b59b70",stock={"thickness_mm":6})
     firewall=Solid.make_cylinder(22,4,Plane(origin=(545,0,220),z_dir=(1,0,0)))
     for y,z in [(-8,212),(-8,228),(8,212),(8,228)]:
         firewall=firewall-Solid.make_cylinder(1.6,6,Plane(origin=(544,y,z),z_dir=(1,0,0)))
     add("motor-firewall","Motor firewall candidate",firewall,"power","cut-plywood",color="#b59b70",
-        note="Provisional 16 mm square M3 pattern; vendor pattern must be confirmed before cutting.")
+        note="Provisional 16 mm square M3 pattern; vendor pattern must be confirmed before cutting.",stock={"thickness_mm":4})
     saddle=(Box(82,86,65)-Box(76,80,70)).moved(Location((342,0,75)))-outer
     add("wing-saddle","Wing mounting saddle",saddle,"structure",note="Connects pod to elevated wing; center spar restraint and fastening need validation.",color="#71946b")
     add("battery-tray","Battery tray candidate",Box(105,43,2).moved(Location((p["battery_x_m"]*1000,0,-24))),"power")

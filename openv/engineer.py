@@ -104,3 +104,13 @@ This is for testing without a model account, not an Astra demonstration.
         return Proposal(problem=", ".join(sorted(failures)),hypothesis=why,changes=changes,
                         expected_effect="Fixture hypothesis only; compare fresh independent evidence.")
 
+
+class VerificationOnlyEngineer:
+    label="User experiment · external verification"
+    calls=[]
+
+    def define(self, mission_text):
+        raise RuntimeError("Verification-only runs require an existing canonical design")
+
+    def redesign(self, context):
+        raise RuntimeError("Connect Astra to propose an engineering repair")

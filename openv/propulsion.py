@@ -1,56 +1,54 @@
-"""APC manufacturer-predicted propeller data, with explicit motor/battery gaps."""
+"""Measured propeller data with explicit installed motor/battery coverage gaps."""
 from __future__ import annotations
 
 import hashlib
-import math
 import os
-import re
 from pathlib import Path
 
 from openv.core import Measurement, ToolOutput
 
-SOURCE="https://www.apcprop.com/files/PER3_8x4E.dat"
+SOURCE="https://m-selig.ae.illinois.edu/props/volume-1/propDB-volume-1.html"
+DATASETS=[
+    (4001,"apce_8x4_2792rd_4001.txt"),
+    (5011,"apce_8x4_2793rd_5011.txt"),
+    (6007,"apce_8x4_2794rd_6007.txt"),
+    (7011,"apce_8x4_2796rd_7011.txt"),
+    (7025,"apce_8x4_2795rd_7025.txt"),
+]
 
 
 def profile(speed_mps: float, density_kg_m3: float):
     import httpx
     import numpy as np
-    path=Path(os.environ.get("OPENV_AUTH_DIR",".openv"))/"PER3_8x4E.dat"
-    try:
-        if not path.exists():
-            response=httpx.get(SOURCE,timeout=20,follow_redirects=True)
-            response.raise_for_status()
-            if "PROP RPM" not in response.text:raise ValueError("Unexpected propeller dataset")
-            path.parent.mkdir(parents=True,exist_ok=True)
-            path.write_text(response.text)
-        raw=path.read_text()
-        data={};rpm=None
-        for line in raw.splitlines():
-            match=re.search(r"PROP RPM\s*=\s*(\d+)",line)
-            if match:rpm=int(match.group(1));data[rpm]=[];continue
-            fields=line.split()
-            if rpm is not None and len(fields)==15:
-                try: values=[float(v) for v in fields]
-                except ValueError:continue
-                data[rpm].append(values)
-        points=[]
-        diameter=.2032
-        # Only the small speed-specific interpolation slice is included in the
-        # evidence package; the full downloaded vendor file stays in local cache.
-        for rpm,rows in data.items():
-            if not 6000<=rpm<=13000 or not rows:continue
+    cache=Path(os.environ.get("OPENV_AUTH_DIR",".openv"))/"propeller-data"
+    points=[];sources=[];errors=[]
+    diameter=.2032
+    for rpm,name in DATASETS:
+        url="https://m-selig.ae.illinois.edu/props/volume-1/data/"+name
+        path=cache/name
+        try:
+            if not path.exists():
+                response=httpx.get(url,timeout=10,follow_redirects=True)
+                response.raise_for_status()
+                if not response.text.strip().startswith("J"):raise ValueError("Unexpected propeller dataset")
+                cache.mkdir(parents=True,exist_ok=True);path.write_text(response.text)
+            raw=path.read_text()
+            rows=np.loadtxt(path,skiprows=1)
+            if rows.ndim!=2 or rows.shape[1]!=4 or not np.isfinite(rows).all():raise ValueError("Invalid measurement table")
+            if not np.all(np.diff(rows[:,0])>0):raise ValueError("Advance ratio must increase")
+            sources.append({"url":url,"sha256":hashlib.sha256(raw.encode()).hexdigest(),"rpm":rpm})
             advance=speed_mps/(rpm/60*diameter)
-            j=[r[1] for r in rows]
-            if not min(j)<=advance<=max(j):continue
-            ct=float(np.interp(advance,j,[r[3] for r in rows]))
-            cp=float(np.interp(advance,j,[r[4] for r in rows]))
-            points.append({"rpm":rpm,"thrust_n":ct*density_kg_m3*(rpm/60)**2*diameter**4,
-                           "shaft_w":cp*density_kg_m3*(rpm/60)**3*diameter**5})
-        return {"source":SOURCE,"sha256":hashlib.sha256(raw.encode()).hexdigest(),
-                "kind":"manufacturer aerodynamic prediction, not a bench measurement", "speed_mps":speed_mps,
-                "density_kg_m3":density_kg_m3,"points":points}
-    except Exception as exc:
-        return {"source":SOURCE,"points":[],"error":f"{type(exc).__name__}: {exc}"}
+            if not rows[0,0]<=advance<=rows[-1,0]:continue
+            ct=float(np.interp(advance,rows[:,0],rows[:,1]))
+            cp=float(np.interp(advance,rows[:,0],rows[:,2]))
+            if ct<=0 or cp<=0:continue
+            points.append({"rpm":rpm,"advance_ratio":advance,"ct":ct,"cp":cp,
+                "thrust_n":ct*density_kg_m3*(rpm/60)**2*diameter**4,
+                "shaft_w":cp*density_kg_m3*(rpm/60)**3*diameter**5})
+        except Exception as exc:errors.append({"url":url,"error":f"{type(exc).__name__}: {exc}"})
+    return {"source":SOURCE,"datasets":sources,"errors":errors,
+        "kind":"UIUC wind-tunnel measurements: APC Thin Electric 8x4, volume 1 version 3",
+        "speed_mps":speed_mps,"density_kg_m3":density_kg_m3,"points":points}
 
 
 def output(inputs):
@@ -77,5 +75,5 @@ def output(inputs):
         raw={"required_thrust_n":drag.value,"required_shaft_w":shaft,"rpm":rpm,"endurance_estimate_min":bounds,
              "assumed_motor_esc_efficiency":[.65,.85],"assumed_usable_energy_wh":energy,"assumed_auxiliary_w":2,"profile":profile},
         assumptions=(unknown,"Energy estimate assumes 80% nominal battery energy and 2 W auxiliary load; cruise-only, no launch/climb reserve.",
-                     "APC predicted Ct/Cp interpolation at declared airspeed/density. Geometry is still a simplified installed-aircraft model."))
+                     "UIUC measured Ct/Cp interpolation at declared airspeed/density; no extrapolation beyond measured RPM/J. Geometry is still a simplified installed-aircraft model."))
 

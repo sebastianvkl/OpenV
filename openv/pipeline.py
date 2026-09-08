@@ -1,7 +1,6 @@
 """One public entry point for the website, CLI and reference demo."""
 from __future__ import annotations
 
-import csv
 import json
 import os
 import shutil
@@ -70,9 +69,9 @@ class Pipeline:
         self.event("evaluated","Independent comparisons completed",statuses={e.requirement_id:e.status for e in evaluations})
         return evidence,evaluations
 
-    def run(self,mission_text: str,max_experiments=5):
+    def run(self,mission_text: str,max_experiments=5,seed=None):
         try:
-            return self._run(mission_text,max_experiments)
+            return self._run(mission_text,max_experiments,seed)
         except Exception as exc:
             self.state["status"]="error"
             self.state["gate"]="UNKNOWN"
@@ -81,23 +80,48 @@ class Pipeline:
             self.event("error","Execution stopped; existing evidence remains version-bound")
             raise
 
-    def _run(self,mission_text,max_experiments):
+    def _run(self,mission_text,max_experiments,seed=None):
         self.event("mission","Proposing mission requirements, architecture and initial design")
-        definition=self.engineer.define(mission_text)
+        if seed:
+            definition=self.domain.read_seed(seed)
+            self.state["origin"]=seed["origin"]
+        else:
+            definition=self.engineer.define(mission_text)
         self.state["mission_proposal"]=definition.model_dump()
         if not definition.supported:
             self.state.update(status="complete",stop_reason="unsupported_mission",gate="UNKNOWN")
             self.event("complete","Requested mission is outside current domain coverage")
             return self.state
-        hardware,design=self.domain.define(definition,mission_text)
+        hardware,design=self.domain.branch(seed,definition) if seed else self.domain.define(definition,mission_text)
+        user_experiment=None
+        if seed:
+            experiment_id=uid("user-experiment")
+            design=design.model_copy(update={"parent_id":seed["origin"]["design_id"],"experiment_id":experiment_id})
+            user_experiment=Experiment(id=experiment_id,problem="User requested a design or mission perturbation",
+                hypothesis=seed["hypothesis"],change=seed["changes"],
+                expected_effect="Recompute evidence for this branch; inspect the actual engineering response.",
+                from_design=seed["origin"]["design_id"],to_design=design.id,
+                before_evidence=tuple(seed["before_evidence_ids"]),invalidated_evidence=tuple(seed["before_evidence_ids"]))
+            self.state["user_experiment"]=user_experiment.model_dump()
+            self.state["gate"]="UNKNOWN"
+            self.event("invalidated","New branch: historical evidence is retained, pending fresh verification",experiment=user_experiment.model_dump())
         self.state["system"]=hardware.model_dump()
         if self.store:
             self.state["dalus"]=self.store.create_system(hardware,design)
+            if user_experiment:self.store.record_user_experiment(user_experiment)
         self.event("requirements","Mission baseline and verification contracts frozen",baseline_id=hardware.baseline_id)
         geometry=self.geometry(design,hardware.scenario)
         context=self.context(hardware,design,geometry)
         evidence,evaluations=self.verify(hardware,design,context)
-        stop="experiment_limit"
+        if seed:
+            previous=seed["before_evaluations"]
+            actual={e.requirement_id:{"before":next((p["status"] for p in previous if p["requirement_id"]==e.requirement_id),"UNKNOWN"),
+                                     "after":e.status.value,"reasons":list(e.reasons)} for e in evaluations}
+            experiment=user_experiment.model_copy(update={"after_evidence":tuple(e.id for e in evidence),"actual_effect":actual})
+            self.state["user_experiment"]=experiment.model_dump()
+            if self.store:self.store.complete_experiment(experiment)
+            self.event("experiment-complete","User perturbation evaluated against explicit baseline",experiment=experiment.model_dump())
+        stop="verification_only" if max_experiments==0 else "experiment_limit"
         for _ in range(max_experiments):
             if time.monotonic()-self.started>float(os.environ.get("OPENV_RUN_TIMEOUT","600")):
                 stop="time_limit"; break
@@ -155,51 +179,22 @@ class Pipeline:
         return self.state
 
     def package(self,hardware,design,geometry):
+        from openv.core import ENGINEERING_REVISION,source_revision
+        if source_revision()!=ENGINEERING_REVISION:
+            raise RuntimeError("Runtime source changed during this run; cannot package inconsistent regeneration source")
         self.event("package","Packaging this design version, evidence, BOM and fabrication notes")
         folder=self.directory/design.id
-        bom=[{k:part[k] for k in ("id","name","process","mass_kg","mass_quality","note")} for part in geometry["parts"]]
-        with (folder/"bom.csv").open("w",newline="") as stream:
-            writer=csv.DictWriter(stream,fieldnames=list(bom[0]));writer.writeheader();writer.writerows(bom)
         write_json(folder/"system.json",hardware.model_dump())
-        write_json(folder/"experiments.json",self.state["experiments"])
+        write_json(folder/"experiments.json",([self.state["user_experiment"]] if "user_experiment" in self.state else [])+self.state["experiments"])
         source_dir=folder/"source"
         source_dir.mkdir(exist_ok=True)
         root=Path(__file__).resolve().parent.parent
         shutil.copytree(root/"openv",source_dir/"openv",ignore=shutil.ignore_patterns("__pycache__","*.pyc"),dirs_exist_ok=True)
         for name in ("pyproject.toml","requirements-lock.txt","LICENSE"):
             shutil.copy2(root/name,source_dir/name)
-        (folder/"regenerate.py").write_text('''"""After installing ./source, regenerate this exact candidate geometry."""
-import json
-from pathlib import Path
-from openv.cad import build
-root=Path(__file__).resolve().parent
-parameters=json.loads((root/"design-parameters.json").read_text())
-system=json.loads((root/"system.json").read_text())
-build(parameters,system["scenario"],root/"regenerated")
-''')
-        sequence=[
-            {"title":"Prepare the wing modules","groups":["wing","structure"],"action":"Inspect printed shells and cut spar stock to CAD-derived lengths. Dry-fit seams and spar alignment before bonding."},
-            {"title":"Assemble the fuselage and tail","groups":["fuselage","tail","structure"],"action":"Dry-fit pod modules, boom and tail. Confirm the alignment datums and design incidence."},
-            {"title":"Install propulsion and controls","groups":["power","controls"],"action":"Resolve motor fasteners, control hinges/linkages, servo mounting and wire routing before assembly. These details are open."},
-            {"title":"Place battery and mission payload","groups":["power","payload"],"action":"Use the versioned positions, provide positive retention, then measure the actual installed CG."},
-            {"title":"Measure before release","groups":["wing","tail","fuselage","power","controls","payload"],"action":"Complete structural, propulsion, control/access and manufacturing checks. Flight validation requires physical test evidence."},
-        ]
-        for step in sequence:
-            step["verification_status"]="UNKNOWN"
-        write_json(folder/"assembly.json",{"design_id":design.id,"status":"UNKNOWN","steps":sequence})
-        notes="""# Fabrication candidate — release blocked
-
-STEP and STL units: millimeters. Web mesh and canonical geometry: meters.
-Printed shells use a foamed-PLA density assumption; calibrate material/process
-coupons and slicing before manufacturing. No G-code is supplied. Inspect seam,
-wall-thickness, support and build-orientation requirements before printing.
-Carbon tube material/layup and joints have not been selected or validated.
-Purchased parts in CAD are envelopes. Do not manufacture them from these meshes.
-
-Open design items:
-"""+"\n".join(f"- {item}" for item in geometry["coverage"]["open_items"])
-        (folder/"FABRICATION.md").write_text(notes)
+        domain_files=self.domain.package(folder,hardware,design,geometry)
         manifest={"design_id":design.id,"baseline_id":design.baseline_id,"provider":self.engineer.label,
+            "engineering_revision":ENGINEERING_REVISION,
             "engineering_store":self.state["engineering_store"],"gate":self.state["gate"],
             "package_kind":"manufacturing candidate", "coverage":geometry["coverage"],
             "evaluations":self.state["evaluations"],"files":{}}
@@ -213,4 +208,4 @@ Open design items:
             for path in folder.rglob("*"):
                 if path.is_file(): zip.write(path,str(path.relative_to(folder)))
         self.state["package_file"]=archive.name
-        self.state["assembly_file"]=f"{design.id}/assembly.json"
+        self.state.update(domain_files)

@@ -192,3 +192,19 @@ A deterministic fixture proposer enables account-free checks with actual CAD and
 ## D029 - Dalus discovery and partial batch writes
 
 **Decision (integration, 2026-09-08):** Dalus MCP OAuth is authenticated. Actual tools include listTeams, createModel, searchModel, describeOperations and writeModelChanges. Discover operation schemas before mapping engineering records. Dalus statuses are Incomplete / In Progress / Complete / Failed; OpenV maps UNKNOWN to Incomplete, stale/pending to In Progress, PASS to Complete only with admitted current evidence, and FAIL to Failed. Batches are not atomic: invalid entries are skipped while valid siblings apply. Keep an explicit commit marker incomplete until every intended operation and read-back check succeeds. Never infer verification from a successful MCP request.
+
+## D030 - Explicit user experiments and immutable baselines
+
+**Decision (implementation, 2026-09-08):** Website controls create a new isolated run linked to the selected parent version. Record the hypothesis and invalidation before CAD or verification. Design-only branches carry forward the exact accepted HardwareSystem and contracts; do not reconstruct a baseline from defaults, where integer/float serialization or template edits can change its identity. Numeric mission changes create an explicit baseline amendment; only the affected mission-derived thresholds may change. Preserve all other contracts and uncovered clauses. Branches conservatively recompute evidence; within-run redesign reuses only identical dependency fingerprints. Historical evidence is retained.
+
+## D031 - Source provenance and domain-owned fabrication outputs
+
+**Decision (implementation, 2026-09-08):** Fingerprints include a process-start engineering-source revision to cover cross-module method dependencies. Freeze each method's own source hash at registration. A run refuses packaging if its source tree changes during execution. Packages include regeneration source, dependency lock, canonical state, evidence, experiment history and a file-hash manifest. Aircraft fabrication/assembly knowledge lives in the aircraft domain, not the pipeline. A minimal bracket-domain regression exercises the same public fail/redesign/invalidate/verify/package runtime.
+
+## D032 - Measured propeller data with bounded applicability
+
+**Decision (implementation, 2026-09-08):** The APC prediction download returned HTTP 403. Use the publicly accessible UIUC Propeller Database volume 1, version 3 measurements for APC Thin Electric 8x4 instead. Cache source files privately; evidence records source URLs/hashes and the small airspeed-specific interpolation slice. Never extrapolate beyond measured advance ratios/RPM. Available measurements can support an exploratory shaft-power/energy calculation, but missing installed motor, battery discharge and mission-reserve evidence keeps endurance UNKNOWN. No source-fetch success establishes performance.
+
+## D033 - One public Python host
+
+**Decision (deployment, 2026-09-08):** Use one isolated Ubuntu host in the user's authenticated AWS account, serving FastAPI through Caddy HTTPS and systemd. This supports the native CAD/solver dependencies without introducing a second runtime, database or job framework. One admitted process, daily run quota and hard time/iteration bounds limit public execution. Credentials stay in restricted server-side files. Host resources incur ongoing charges and must be stopped/deleted when no longer needed. The website can show published runs while live credentials are unavailable, with provider labels preserved; this is not acceptance of the live Astra milestone.

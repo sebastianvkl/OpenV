@@ -19,6 +19,16 @@ from pydantic import BaseModel, ConfigDict, Field
 CORE_REVISION=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:16]
 
 
+def source_revision():
+    """Conservative provenance for cross-module engineering dependencies."""
+    root=Path(__file__).parent
+    files={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.glob("*.py"))}
+    return hashlib.sha256(json.dumps(files,sort_keys=True).encode()).hexdigest()
+
+
+ENGINEERING_REVISION=source_revision()
+
+
 def uid(prefix: str) -> str:
     return f"{prefix}-{uuid4().hex[:12]}"
 
@@ -166,16 +176,17 @@ class Method:
                  run: Callable[[dict[str, Any]], ToolOutput]):
         self.name, self.version = name, version
         self.dependencies, self.run = dependencies, run
+        import inspect
+        module=inspect.getmodule(run)
+        source=Path(module.__file__) if module and getattr(module,"__file__",None) else None
+        self.source_hash=hashlib.sha256(source.read_bytes()).hexdigest() if source and source.is_file() else "unavailable"
 
     def inputs(self, context: dict[str, Any]) -> dict[str, Any]:
         return {key: context[key] for key in self.dependencies}
 
     def fingerprint(self, context: dict[str, Any], contracts: tuple[Contract, ...]) -> str:
-        import inspect
-        module=inspect.getmodule(self.run)
-        source=Path(module.__file__) if module and getattr(module,"__file__",None) else None
-        source_hash=hashlib.sha256(source.read_bytes()).hexdigest() if source and source.is_file() else "unavailable"
-        return digest({"method": self.name, "version": self.version, "graph": 1,"core_revision":CORE_REVISION,"method_source_hash":source_hash,
+        return digest({"method": self.name, "version": self.version, "graph": 1,"core_revision":CORE_REVISION,
+                       "engineering_revision":ENGINEERING_REVISION,"method_source_hash":self.source_hash,
                        "inputs": self.inputs(context),
                        "contracts": [c.model_dump() for c in contracts if c.method == self.name]})
 

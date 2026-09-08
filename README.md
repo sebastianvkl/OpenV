@@ -2,7 +2,11 @@
 
 **AI-generated hardware is a hypothesis.** OpenV runs the engineering V: intent → requirements → design → independent verification → failure → engineering experiment → redesign → evidence-backed status.
 
-The first domain is a conventional electric RC motor-glider. Astra proposes; the runtime evaluates measurements from AeroSandbox, CAD geometry checks and deterministic calculations. Requirements use PASS / FAIL / UNKNOWN. Changing a design invalidates dependent evidence. Dalus is the intended live engineering system of record through MCP exclusively.
+The first domain is a conventional electric RC motor-glider. Astra proposes; the runtime evaluates measurements from AeroSandbox, CAD geometry checks and deterministic calculations. Requirements use PASS / FAIL / UNKNOWN. Changing a design invalidates dependent evidence. Dalus is the live engineering system of record through MCP exclusively.
+
+[Public demo](https://openv.3.92.144.120.sslip.io) · [Execution status](docs/EXECUTION_PLAN.md)
+
+Published examples identify their proposer. Live Astra requires server credentials; an offline fixture is not an Astra run.
 
 ## Run locally
 
@@ -46,8 +50,10 @@ Open the displayed OAuth URL. Tokens are stored in ignored `.openv/` files with 
 - Parametric STEP/STL candidates and meshes from the same CAD geometry used for mass properties and aircraft analysis inputs.
 - AeroSandbox trim/static stability, idealized spar bending, cell-allocation compatibility, solid validity and print-envelope checks.
 - Explore / Simulate / Assemble viewer, historical design selection, raw evidence, experiment log and candidate-package downloads.
+- Simulation controls for wingspan, battery position and payload: verify an explicit change, or run checks and let Astra attempt repairs. A new run preserves the parent and its frozen requirements; payload changes explicitly amend the mission baseline.
+- Candidate BOM accounts for every modeled mass, including installation allowances; cut-stock parts include individual STEP files and dimensions. Packages include regeneration source and a hash manifest.
 
-The current CAD package is **a candidate, not a complete manufacturing release**. Hinge/linkage selections, fastening/joints, exact remaining vendor selections, access checks and process calibration still need work. The candidate includes split control surfaces, spar bores, ribs, access hatches and mounting candidates. APC manufacturer-predicted propeller data supports a drag-dependent power estimate; missing motor/ESC efficiency and battery discharge evidence still keep endurance UNKNOWN. The beam model uses declared material assumptions and does not prove full-airframe strength. Physical flight validation remains UNKNOWN. See `geometry.json`, `manifest.json`, and `FABRICATION.md` in each package for its exact coverage.
+The current CAD package is **a candidate, not a complete manufacturing release**. Hinge/linkage selections, fastening/joints, exact remaining vendor selections, access checks and process calibration still need work. The candidate includes split control surfaces, spar bores, ribs, access hatches and mounting candidates. UIUC wind-tunnel data for the APC Thin Electric 8x4 supports a bounded exploratory power estimate when required thrust lies inside the measured range; missing motor/ESC efficiency and battery discharge evidence still keep endurance UNKNOWN. The beam model uses declared material assumptions and does not prove full-airframe strength. Physical flight validation remains UNKNOWN. See `geometry.json`, `manifest.json`, and `FABRICATION.md` in each package for its exact coverage.
 
 ## Architecture
 

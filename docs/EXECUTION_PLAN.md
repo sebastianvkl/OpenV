@@ -8,11 +8,16 @@ Updated: 2026-09-08. **Implementation approved by the user ("Go ahead"). Target:
 - [x] Core verdict/evidence tests pass; fixture end-to-end repair generated CAD, invalidated evidence and reverified an 8-to-10 mm spar change.
 - [x] Local React/Three.js viewer built and inspected with actual CAD meshes and evidence.
 - [x] Dalus OAuth and typed MCP engineering mapping work end-to-end: requirements, variables/components, delegated interfaces, test cases, evidence references, invalidation and experiments with actual effects.
-- [ ] Astra credentials, live model run, complete manufacturing definition and public backend deployment remain outstanding.
+- [x] Public HTTPS host and public GitHub repository created; reference example is served. Live credentials and fresh public-run acceptance remain outstanding.
+- [x] User perturbation API and simulation controls added; longer wings expose real stability and deflection failures. Baseline preservation regression added.
+- [x] Individual cut-part STEP files, stock dimensions, complete modeled-mass BOM accounting and regeneration source added to candidate packaging.
+- [ ] Astra credentials/live model trajectory, complete manufacturing definition, public live-run validation and submission video remain outstanding.
 
 The current 37-part CAD export is a candidate with explicitly listed design gaps; it is not the complete manufacturing package milestone.
 
-## Pre-implementation review - 11:04 a.m. Pacific
+## Historical pre-implementation review - 11:04 a.m. Pacific
+
+The following records the initial state before approval; current progress is above.
 
 The architecture is sufficiently defined to begin implementation after the user approves the baseline and access setup. The accumulated P0 deliverables remain the goal, but their breadth is not a credible guarantee of complete aircraft/manufacturing verification by 4:00 p.m. There are roughly five hours left and the workspace still contains documentation only. Do not respond to schedule pressure by weakening evidence rules or silently dropping requested outputs.
 
@@ -226,7 +231,7 @@ Locally publish a candidate only with dependent applicability invalidated. In Da
 
 ## Implementation sequence and time budget
 
-Start only after approval. These checkpoints target September 8, Pacific time; they are not completed features or guaranteed timings.
+Approval was received. These original checkpoints target September 8, Pacific time; they are not completed features or guaranteed timings.
 
 | By | Working result |
 | --- | --- |
@@ -242,20 +247,20 @@ The supplied event guide sets submission at 5:30 p.m.; retain that interval as c
 ## P0 - Must ship today
 
 - [x] Approve this reduced implementation scope; record further accepted choices in `DECISIONS.md` as needed.
-- [ ] Implement one reusable pipeline entry point with small typed domain/tool interfaces; run the aircraft demo through that same entry point and keep aircraft assumptions out of the core.
-- [ ] Connect to Dalus exclusively through MCP and verify supported read/write/evidence-reference capabilities.
-- [ ] Implement the small canonical snapshot, frozen contracts, and tiny sourced component/reference set with explicit unknowns.
+- [x] Implement one reusable pipeline entry point with small typed domain/tool interfaces; run the aircraft demo through that same entry point and keep aircraft assumptions out of the core.
+- [x] Connect to Dalus exclusively through MCP and verify supported read/write/evidence-reference capabilities.
+- [x] Implement the small canonical snapshot, frozen contracts, and tiny sourced component/reference set with explicit unknowns.
 - [ ] Generate an actual full-reference-system parametric CAD assembly and fabrication exports; retain editable state/source and verify round-trip geometry/units/part identity.
 - [ ] Integrate a validated AeroSandbox flight-analysis path and independent supporting calculations/checks; implement deterministic evaluations and provenance. Cover or explicitly leave open all required verification categories.
-- [ ] Implement versioned patches, transitive invalidation, experiment history, and re-verification.
+- [x] Implement versioned patches, transitive invalidation, experiment history, and re-verification.
 - [ ] Connect real Astra mission/design/redesign proposals; mediate all writes and feed actual evidence back.
-- [ ] Bound iterations/retries/timeouts; retain honest FAIL/UNKNOWN and stop reasons when unresolved.
+- [x] Bound iterations/retries/timeouts; retain honest FAIL/UNKNOWN and stop reasons when unresolved.
 - [ ] Build a polished CAD-model-centered mission -> simulate -> fail -> repair experience with actual result overlays and evidence/Dalus trace.
-- [ ] Add the reference-inspired Explore/Simulate/Assemble views on the same CAD scene: assembled/interior/exploded interaction, selectable components, and a short guided assembly sequence with explicit verification status.
+- [x] Add the reference-inspired Explore/Simulate/Assemble views on the same CAD scene: assembled/interior/exploded interaction, selectable components, and a short guided assembly sequence with explicit verification status.
 - [ ] Deploy the public website and live Python pipeline backend; verify a fresh visitor mission end-to-end, run isolation, bounded execution, reference example access, evidence/package downloads, accurate live/recorded labels, and absence of credentials in public assets.
 - [ ] Demonstrate one mission/design perturbation, immediate invalidation, recomputed failures, and Astra's response without mixing nominal and candidate evidence.
 - [ ] Export the system BOM, fabrication details, concise assembly sequence/check status, and evidence manifest tied to the same design as the CAD.
-- [ ] Test good/bad cases, missing/invalid evidence, protected thresholds/status writes, transitive invalidation, and old/partial-result exclusion.
+- [x] Test good/bad cases, missing/invalid evidence, protected thresholds/status writes, transitive invalidation, and old/partial-result exclusion.
 - [ ] Record one real successful repair trajectory, label all fixtures/replays, and prepare the one-minute submission video and repository materials.
 - [ ] Document setup, tool/backend configuration, adding a domain/verifier, known capability limits, and an offline reproducible example; prove the core with a minimal non-aircraft regression.
 

@@ -401,6 +401,7 @@ function App() {
   const [assembly, setAssembly] = useState(null);
   const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [perturbation, setPerturbation] = useState({});
   useEffect(() => {
     let cancelled = false;
     const tick = async () => {
@@ -445,6 +446,7 @@ function App() {
   const selectedVersion = versionId || run?.current_design_id;
   const version = run?.versions?.find((v) => v.id === selectedVersion);
   const geometryFile = version?.geometry_file;
+  useEffect(() => setPerturbation({}), [runId, selectedVersion]);
   useEffect(() => {
     if (!geometryFile || !runId) {
       setGeometry(null);
@@ -539,6 +541,38 @@ function App() {
   const showEvidence = (id) => {
     setDetail(id);
     setDrawer(true);
+  };
+  const runExperiment = async (repair = false) => {
+    setBusy(true);
+    setError("");
+    try {
+      const parameter_changes = {};
+      const mission_changes = {};
+      for (const [key, value] of Object.entries(perturbation)) {
+        if (key === "payload_kg") mission_changes[key] = value;
+        else parameter_changes[key] = value;
+      }
+      const next = await api("/api/runs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mission: run.system.mission,
+          source_run_id: runId,
+          source_design_id: selectedVersion,
+          parameter_changes,
+          mission_changes,
+          verify_only: !repair,
+        }),
+      });
+      setRunId(next.id);
+      setRun(null);
+      setGeometry(null);
+      setVersionId("");
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
   };
   const chooseRun = (id) => {
     setRunId(id);
@@ -848,6 +882,84 @@ function App() {
                 </div>
               </div>
               <Chart aero={aero} />
+              {version && (
+                <div className="experiment-controls">
+                  <div className="panel-heading">
+                    <span>WHAT IF YOU CHANGE…</span>
+                  </div>
+                  {[
+                    [
+                      "span_m",
+                      "Wingspan",
+                      0.9,
+                      2,
+                      0.05,
+                      "m",
+                      version.parameters.span_m,
+                    ],
+                    [
+                      "battery_x_m",
+                      "Battery position",
+                      0.12,
+                      0.46,
+                      0.01,
+                      "m aft of nose",
+                      version.parameters.battery_x_m,
+                    ],
+                    [
+                      "payload_kg",
+                      "Mission payload",
+                      0,
+                      0.5,
+                      0.025,
+                      "kg",
+                      run.system.scenario.payload_kg,
+                    ],
+                  ].map(([key, label, min, max, step, unit, original]) => (
+                    <label className="experiment-slider" key={key}>
+                      <span>
+                        {label}
+                        <b>
+                          {number(perturbation[key] ?? original, 3)} {unit}
+                        </b>
+                      </span>
+                      <input
+                        type="range"
+                        min={min}
+                        max={max}
+                        step={step}
+                        value={perturbation[key] ?? original}
+                        onChange={(e) =>
+                          setPerturbation((p) => ({
+                            ...p,
+                            [key]: Number(e.target.value),
+                          }))
+                        }
+                      />
+                    </label>
+                  ))}
+                  <p className="tiny">
+                    Draft values. Run checks to generate a new CAD version and
+                    fresh evidence. Payload changes amend the mission baseline.
+                  </p>
+                  <button
+                    className="primary"
+                    disabled={busy || config.busy || isRunning}
+                    onClick={() => runExperiment(false)}
+                  >
+                    Run checks <ArrowUpRight size={14} />
+                  </button>
+                  <button
+                    className="repair-button"
+                    disabled={
+                      busy || config.busy || isRunning || !config.astra_ready
+                    }
+                    onClick={() => runExperiment(true)}
+                  >
+                    Run + ask Astra to repair
+                  </button>
+                </div>
+              )}
               <p className="tiny">
                 AeroSandbox + analytical beam model.
                 <br />
@@ -1132,6 +1244,29 @@ function App() {
               </Badge>
               <span>{run?.engineering_store}</span>
             </div>
+            {run?.dalus && (
+              <details className="dalus-trace">
+                <summary>Dalus system of record · {run.dalus.commit}</summary>
+                <p className="tiny">
+                  Requirements, architecture, parameters, interfaces,
+                  verification cases and experiments are committed through MCP.
+                  This page displays the exported engineering evidence.
+                </p>
+                <p className="tiny">
+                  Model: <code>{run.dalus.model_id}</code>
+                </p>
+                <pre>
+                  {JSON.stringify(
+                    {
+                      requirements: run.dalus.requirements,
+                      verification_cases: run.dalus.test_cases,
+                    },
+                    null,
+                    2,
+                  )}
+                </pre>
+              </details>
+            )}
             {evaluations.map((e) => {
               const requirement = run?.system?.requirements.find(
                 (r) => r.id === e.requirement_id,
@@ -1157,6 +1292,14 @@ function App() {
                       <span className="tiny-label">
                         {requirement?.level} / {requirement?.owner}
                       </span>
+                      {run?.dalus?.requirements?.[e.requirement_id] && (
+                        <p className="tiny">
+                          Dalus requirement:{" "}
+                          <code>
+                            {run.dalus.requirements[e.requirement_id]}
+                          </code>
+                        </p>
+                      )}
                       {requirement?.contracts.map((c) => (
                         <p key={c.id}>
                           {c.metric} {c.operator} {c.threshold} {c.unit}
@@ -1200,7 +1343,10 @@ function App() {
               );
             })}
             <h3 className="log-heading">Engineering experiments</h3>
-            {run?.experiments?.map((exp, i) => (
+            {[
+              ...(run?.user_experiment ? [run.user_experiment] : []),
+              ...(run?.experiments || []),
+            ].map((exp, i) => (
               <article className="experiment" key={exp.id}>
                 <span className="tiny-label">
                   EXPERIMENT {String(i + 1).padStart(2, "0")}

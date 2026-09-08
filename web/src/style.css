@@ -289,6 +289,10 @@ h1 {
   border-radius: 5px;
   padding: 21px;
   backdrop-filter: blur(12px);
+  max-height: calc(100% - 105px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #b6c4af transparent;
 }
 .panel-heading {
   display: flex;
@@ -1045,6 +1049,8 @@ code {
     top: 674px;
     width: auto;
     padding: 20px;
+    max-height: none;
+    overflow: visible;
   }
   .evidence-summary {
     margin-top: 20px;
@@ -1129,3 +1135,42 @@ code {
     width: 90vw;
   }
 }
+.experiment-controls {
+  border-top: 1px solid #d8ddd5;
+  padding-top: 20px;
+  margin-top: 24px;
+}
+.experiment-slider {
+  display: block;
+  margin: 15px 0;
+}
+.experiment-slider span {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  margin-bottom: 7px;
+}
+.experiment-slider b {
+  font-weight: 500;
+  color: #276145;
+}
+.experiment-slider input {
+  width: 100%;
+  accent-color: #276145;
+}
+.experiment-controls .primary {
+  width: 100%;
+  justify-content: center;
+}
+.repair-button {
+  width: 100%;
+  margin-top: 10px;
+  font-size: 11px;
+  padding: 10px;
+  border: 1px solid #cad3c6;
+  border-radius: 5px;
+}
+.dalus-trace { margin: 22px 0; padding: 16px; border: 1px solid var(--line); border-radius: 5px; font-size: 12px; }
+.dalus-trace code { overflow-wrap: anywhere; }
+.dalus-trace pre { max-height: 240px; overflow: auto; font-size: 10px; }

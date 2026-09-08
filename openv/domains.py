@@ -13,15 +13,43 @@ class Domain(Protocol):
     def build(self, design: DesignVersion, scenario: dict, directory: Path) -> dict: ...
     def context(self, hardware: HardwareSystem, design: DesignVersion, artifacts: dict) -> dict: ...
     def pending_context(self, context: dict, candidate: DesignVersion) -> dict: ...
+    def read_seed(self, seed: dict): ...
+    def branch(self, seed: dict, proposal) -> tuple[HardwareSystem, DesignVersion]: ...
+    def package(self, folder: Path, hardware: HardwareSystem, design: DesignVersion, artifacts: dict) -> dict: ...
 
 
 class AircraftDomain:
     id="motor-glider/1"
 
+    def package(self,folder,hardware,design,artifacts):
+        from openv.aircraft_package import write_package
+        return write_package(folder,hardware,design,artifacts)
+
+    def read_seed(self,seed):
+        from openv.engineer import MissionProposal
+        return MissionProposal.model_validate(seed["definition"])
+
+    def branch(self,seed,proposal):
+        from openv.aircraft import initial_design
+        from openv.core import digest
+        hardware=HardwareSystem.model_validate(seed["system"])
+        if seed["origin"]["mission_amended"]:
+            # Preserve the accepted contracts. Only mission-derived thresholds
+            # explicitly amended by the user may change across this branch.
+            thresholds={"mass":proposal.mission.max_mass_kg,"endurance":proposal.mission.endurance_min}
+            requirements=tuple(r.model_copy(update={"contracts":tuple(
+                c.model_copy(update={"threshold":thresholds[r.id]}) for c in r.contracts)})
+                if r.id in thresholds else r for r in hardware.requirements)
+            hardware=hardware.model_copy(update={"scenario":proposal.mission.model_dump(),
+                "requirements":requirements,"baseline_id":"baseline-"+digest({
+                    "parent":hardware.baseline_id,"mission":proposal.mission.model_dump(),
+                    "requirements":[r.model_dump() for r in requirements]})[:12]})
+        return hardware,initial_design(hardware,proposal.parameters)
+
     def methods(self):
         from openv import aircraft,cad
         from openv import propulsion
-        return aircraft.methods()+[cad.method(),Method("propulsion","apc-prediction-and-energy/1",
+        return aircraft.methods()+[cad.method(),Method("propulsion","uiuc-measured-propeller-and-energy/1",
             ("geometry","mass_properties","scenario","catalog","propeller_profile"),propulsion.output)]
 
     def define(self,proposal,mission_text):

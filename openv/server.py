@@ -49,6 +49,11 @@ class RunRequest(BaseModel):
     model_config=ConfigDict(extra="forbid")
     mission: str = Field(min_length=10,max_length=4000)
     offline: bool = False
+    source_run_id: str | None = None
+    source_design_id: str | None = None
+    parameter_changes: dict[str,float] = Field(default_factory=dict)
+    mission_changes: dict[str,float] = Field(default_factory=dict)
+    verify_only: bool = False
 
 
 @app.get("/api/config")
@@ -93,8 +98,37 @@ async def admit_run(request:RunRequest):
         raise HTTPException(409,"An engineering run is active. Please wait for it to finish.")
     if request.offline and os.environ.get("OPENV_ALLOW_FIXTURES")!="1":
         raise HTTPException(403,"Offline fixture runs are disabled on this deployment.")
-    if not request.offline and not os.environ.get("OPENAI_API_KEY"):
+    if not request.offline and not request.verify_only and not os.environ.get("OPENAI_API_KEY"):
         raise HTTPException(503,"Astra credentials are not configured. Published runs remain inspectable.")
+    seed=None
+    if request.source_run_id:
+        parent=run(request.source_run_id)
+        version=next((v for v in parent.get("versions",[]) if v["id"]==(request.source_design_id or parent.get("current_design_id"))),None)
+        if version is None:raise HTTPException(422,"Choose an existing design version")
+        from openv.aircraft import Mission,Parameters
+        from pydantic import ValidationError
+        if not set(request.parameter_changes).issubset(Parameters.model_fields):raise HTTPException(422,"Unknown design parameter")
+        if not set(request.mission_changes).issubset(set(Mission.model_fields)-{"text"}):raise HTTPException(422,"Unknown mission parameter")
+        try:
+            p=Parameters.model_validate({**version["parameters"],**request.parameter_changes})
+            m=Mission.model_validate({**parent["system"]["scenario"],**request.mission_changes})
+        except ValidationError as exc:raise HTTPException(422,str(exc)) from exc
+        actual_parameters={k:v for k,v in request.parameter_changes.items() if version["parameters"][k]!=v}
+        actual_mission={k:v for k,v in request.mission_changes.items() if parent["system"]["scenario"][k]!=v}
+        baseline_changed=bool(actual_mission)
+        seed={"system":parent["system"],"definition":{"supported":True,"mission":m.model_dump(),"parameters":p.model_dump(),
+            "rationale":"Explicit user perturbation of existing canonical state", "uncovered_clauses":parent.get("mission_proposal",{}).get("uncovered_clauses",[])},
+            "origin":{"run_id":request.source_run_id,"design_id":version["id"],"baseline_id":version["baseline_id"],"mission_amended":baseline_changed},
+            "before_evaluations":parent.get("evaluations",[]),"before_evidence_ids":[e["id"] for e in parent.get("evidence",[])],
+            "changes":{**actual_parameters,**{f"mission.{k}":v for k,v in actual_mission.items()}},
+            "hypothesis":"Explore the effect of the requested parameter/mission change using independent engineering checks."}
+        # Historical versions must use their own evidence, not the current run's.
+        history=ARTIFACTS/request.source_run_id/version["id"]/"verification.json"
+        if history.exists():
+            evidence=json.loads(history.read_text());seed["before_evaluations"]=evidence["evaluations"]
+            seed["before_evidence_ids"]=[e["id"] for e in evidence["evidence"]]
+    elif request.verify_only or request.parameter_changes or request.mission_changes:
+        raise HTTPException(422,"A source design is required for perturbation/verification-only runs")
     now=time.time()
     recent=sum(1 for p in ARTIFACTS.glob("*/run.json") if now-p.stat().st_ctime<86400)
     if recent>=int(os.environ.get("OPENV_MAX_DAILY_RUNS","20")):
@@ -108,11 +142,21 @@ async def admit_run(request:RunRequest):
     command=[sys.executable,"-m","openv.cli",request.mission,"--run-id",run_id,
              "--max-experiments",os.environ.get("OPENV_MAX_EXPERIMENTS","5")]
     if request.offline:command.append("--offline")
+    if seed:
+        write_json(folder/"seed.json",seed)
+        command.extend(["--seed",str(folder/"seed.json")])
+    if request.verify_only:command.append("--verify-only")
     active=await asyncio.create_subprocess_exec(*command,cwd=ROOT,stdout=log,stderr=log)
     process=active
     async def supervise():
         try:
             await asyncio.wait_for(process.wait(),float(os.environ.get("OPENV_RUN_TIMEOUT","600"))+30)
+            if process.returncode:
+                path=folder/"run.json"
+                data=json.loads(path.read_text()) if path.exists() else {"id":run_id}
+                if data.get("status") not in ("error","interrupted"):
+                    data.update(status="error",gate="UNKNOWN",stop_reason="worker_failed",stage="error")
+                    write_json(path,data)
         except asyncio.TimeoutError:
             process.kill();await process.wait()
             path=folder/"run.json"
