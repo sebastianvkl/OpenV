@@ -366,3 +366,10 @@ First local browser import took 48.6 seconds for the 11.6 MB fixture; cached rev
 - [x] Five viewer unit checks pass. Local browser acceptance exercised part visibility/reset, close-up/top views, XYZ labels, cached reload, blocked source, changed source, cancellation and mobile layout, with no JavaScript errors or engineering writes. First import took 48.6 s; cached reload took 2.0 s.
 - [x] Recheck primary manufacturer resources for exact purchased-part CAD; retain labeled envelopes because no trustworthy exact STEP download was established.
 - [x] Published commit `65faecf` on Vercel and verified the live 45-part candidate. Production browser acceptance passed all inspection/cache/source-failure/mobile checks with no JavaScript errors or engineering writes. Cold import took 53.9 s; hash-checked cached reload took 5.0 s.
+
+
+### Submission recording plan
+
+- [x] Replace the aspirational demo script with a timed one-minute shot list and a 120-word voiceover, using the actual Astra battery-repair run and the later unchanged-candidate flight/STEP example.
+- [x] Identify today's OpenV contributions, preserve recorded-run labeling and UNKNOWN scope, provide preloaded-tab setup, submission copy and the earlier-video fallback.
+- [ ] Record/edit the new submission video, check duration/audio/links, and submit through the event form. The recording plan does not mean a new video has been created or submitted.

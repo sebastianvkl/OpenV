@@ -1,225 +1,85 @@
-# Hackathon Demo Plan
+# OpenV — one-minute submission demo
 
-Current scope clarification (2026-09-08, D021-D023): the 4:00 p.m. target includes real CAD and a manufacturing package, actual aircraft analysis visualizations, and a mission/design perturbation that triggers failure, invalidation, and Astra redesign. Dalus is central through MCP only. Physical fabrication/flight testing is not today's deliverable. The implementation order and acceptance criteria in `EXECUTION_PLAN.md` supersede the older P0/P1/P2 grouping below where they differ; never label an incomplete manufacturing or flight-verification gate as passed.
+Recording plan, 2026-09-08. This replaces the earlier aspirational demo sequence with demonstrated functionality. No new application implementation or engineering run is needed for this recording.
 
-## Demo thesis
+## Submission brief
 
-The audience should understand one idea immediately:
+The participant guide supplied by the user requests a short **one-minute demo video**, a public repository, an accessible demo link, and all team members on the submission. It lists **5:30 p.m.** as the submission deadline; follow organizer updates if changed. The submission page could not be read from this session, so its current upload fields/limits are unconfirmed.
 
-**AI-generated hardware can look correct and still be wrong. This pipeline finds the failures and keeps redesigning until the requirements are backed by engineering evidence.**
+Submission: https://cerebralvalley.ai/e/openai-gpt-6-astra-sf/hackathon/submit
+Public repository: https://github.com/sebastianvkl/OpenV
+Public demo: https://openv-kohl.vercel.app
 
-## Primary demo system
+The guide explicitly requires identifying the functionality built during the event. Use this caption early: **“Built today: OpenV pipeline, Dalus MCP adapter, verification/redesign loop and browser demo.”** Dalus, AeroSandbox, the CAD kernel and other libraries are existing external tools. Say that Codex helped build the project; describe the actual development model/settings accurately if the form asks. Astra's runtime proposal and redesign calls are recorded in the engineering run.
 
-Small RC motor glider.
+## The story
 
-Suggested user prompt:
+A convincing CAD design contains a real installation error. External geometry checks expose it. Astra proposes a specific change from the measured failure, affected evidence is invalidated, and external verification evaluates the new version. The resulting aircraft remains a manufacturing candidate with explicit unknowns.
 
-> Build me a small RC aircraft that can carry a 300 g camera for at least 25 minutes, cost less than $350, and use parts/custom components that are realistic to source and manufacture.
+Use a recording of the actual completed run, labeled **“Recorded Astra run · computation time omitted.”** Cut between loaded states. Do not present historical version selection as a fresh live solver run, or the animation as a physical flight test. This is a working product demonstration with actual recorded engineering results, not slides.
 
-Exact numbers can be tuned so the first design predictably fails and later iterations can realistically pass.
+## Prepare four tabs before recording
 
-## Desired stage flow
+1. **Repair story:** https://openv-kohl.vercel.app/?run=run-dcef3705d89d . This is the actual Astra mission + redesign run. It has V01 and V02. In Simulate → Fit & access, V01 contains the failure; V02 contains the repaired result. Open its experiment log once to locate the battery change and “7 evidence records invalidated.”
+2. **Dalus:** open the existing authenticated model `99ee8003-6171-47ce-903d-ad279e1b8f25`. Preselect the component-fit/insertion verification and show its requirements, latest result and retained test history. This same model now includes the later re-verification. If Dalus UI is unavailable, use OpenV's evidence drawer → “Dalus captured record,” clearly described as the captured MCP record. Do not create another model.
+3. **Computed flight:** https://openv-kohl.vercel.app/?run=run-365c68904f40&view=flight . This is a subsequent verification of the same repaired candidate. Choose the power-loss response, 3× playback and a clear camera view. Rehearse Restart so zero thrust/descent is visible during the short clip.
+4. **CAD payoff:** https://openv-kohl.vercel.app/?run=run-365c68904f40&view=assemble . Wait for STEP loaded, rehearse the exploded-view slider, then select a custom servo cradle and use Frame selected + Dimensions. Use a custom part so the close-up shows generated CAD detail. Purchased-part bodies remain labeled envelopes.
 
-### 1. Prompt
+Record at 1920×1080 or 1600×900 if available, with the cursor visible and notifications silenced. Use a normal desktop layout and preloaded pages; omit download, login and STEP parsing waits. Capture the clips separately, then lay one voiceover across them. Aim for **58–60 seconds**. Keep the video link accessible without requiring a judge to request permission.
 
-Show a very simple entry screen:
+## Exact shot list
 
-> What do you want to build?
+| Time | Show / action | Point to communicate |
+|---|---|---|
+| 0–5 s | Assembled aircraft in Explore, gentle orbit. | Convincing CAD is not proof. |
+| 5–12 s | Recorded mission and evidence/requirements. Early caption identifies today's OpenV work. | Plain-English mission → requirements → Astra design; built with Codex. |
+| 12–21 s | Repair tab → Simulate → Fit & access → V01. Use Detail or zoom into the battery region; show red interference and a collision row. | Independent geometry checks expose the actual battery/mount interference. |
+| 21–32 s | Experiment log: battery change and “7 evidence records invalidated”; close log and choose V02. Show cleared collision checks. | Astra receives failure evidence, moves battery 3.6 mm, and independent re-verification evaluates the change. |
+| 32–39 s | Switch to prepared Dalus model; show requirement/test/evidence history. | One persistent engineering model, accessed through MCP. |
+| 39–46 s | Flight tab: computed power-loss animation with zero prescribed thrust and falling height. | AeroSandbox-based diagnostic, under stated assumptions. |
+| 46–54 s | STEP tab: briefly explode, then close-up of custom CAD; point to candidate package download. | Real CAD, sourced BOM and manufacturing candidate outputs. |
+| 54–60 s | Evidence totals: 16 PASS, 0 FAIL, 8 UNKNOWN. End with public repo/site URL overlay. | Explicit scope and honest unknowns; the LLM never grants PASS. |
 
-Enter the aircraft request.
+Use short captions to make the numerical story readable: **“Battery x: 411.6 → 408.0 mm”**, **“7 evidence records invalidated”**, **“16 modeled PASS · 8 UNKNOWN.”** The 3.6 mm movement is visually small; the collision evidence and numbers establish the change. Do not exaggerate the geometry movement.
 
-### 2. V-model creation
+## Voiceover
 
-Astra converts the request into:
+AI can generate convincing CAD. But does the hardware actually work?
 
-- requirements
-- architecture
-- interfaces
-- verification plan
+Today I built OpenV with Codex: an open-source pipeline connecting Astra to independent engineering verification.
 
-Show these appearing in Dalus or in a mirrored UI fed from Dalus.
+For this motor-glider mission, Astra proposes requirements and a design. Geometry checks find the battery colliding with two servo mounts.
 
-### 3. First design
+Astra receives that evidence and moves the battery forward 3.6 millimeters. Seven dependent evidence records are invalidated. Fresh checks clear the collisions.
 
-Generate/select:
+Through MCP, Dalus holds requirements, parameters, tests and evidence in one persistent model.
 
-- geometry
-- motor
-- ESC
-- propeller
-- battery
-- servos
-- materials
+AeroSandbox powers the analysis. This animation shows a computed power-loss response.
 
-Render the aircraft.
+The output includes a full STEP assembly, sourced components and a manufacturing candidate package.
 
-Then show the important label:
+Sixteen modeled checks pass. Eight remain unknown, including physical flight. Astra proposes. Evidence decides.
 
-**DESIGN GENERATED - NOT VERIFIED**
+Read at a comfortable pace; this is approximately 120 words. The shot boundaries are editing targets, not a reason to rush individual words. If long, remove “and a manufacturing candidate package” or shorten the CAD clip; preserve the failure, actual change, invalidation, external re-verification and unknowns.
 
-### 4. Verification reveals problems
+## Exact evidence for the story
 
-Run real checks.
+- Mission: “Build a conventional electric RC motor-glider carrying a 150 g camera for 20 minutes at 12 m/s. Use the current sourced installation catalog and verify the candidate.” The twenty-minute endurance is a target, not an achieved claim.
+- Actual Astra run: `run-dcef3705d89d`, baseline `baseline-8cb2309a5029`.
+- V01: `design-7e5e14a82ca4`, battery x = 0.4116 m. Static battery overlap is 10.45 mm³ with each of servo-mount-3 and servo-mount-4. Vertical insertion interference is 130.625 mm³ for each pair. These are solid-model results, not physical measurements.
+- Astra experiment: `experiment-9e700b6c2adf`, battery x = 0.408 m; every other design parameter remains unchanged. Seven evidence records are invalidated.
+- V02: `design-1e44b73937bc`; component-fit and component-insertion change FAIL → PASS. Final totals: 16 PASS / 0 FAIL / 8 UNKNOWN.
+- Later unchanged-candidate verification: `run-365c68904f40`, design `design-34c4fb0ecbe1`, same persistent Dalus model, 45 CAD parts and 70 package hashes checked. This adds the computed flight-response diagnostics. The idealized power-loss case loses 16.62 m height by 25 s; do not promise that number will be visible during the abbreviated clip.
+- Flight animation is a bounded point-mass prediction with idealized attitude tracking and prescribed thrust. Full structural, installation/retention and physical-flight release are not established.
 
-Desired visible result:
+## Submission copy
 
-```text
-Payload                 PASS
-Cost                    PASS
-Endurance               FAIL
-Stall speed             FAIL
-CG / stability          FAIL
-Manufacturability       FAIL or UNKNOWN
-```
+**Title:** OpenV — AI-generated hardware is a hypothesis
 
-The first design should look plausible. That contrast is the point.
+**Short description:** OpenV is an open-source hardware engineering pipeline: natural-language mission → Astra design → independent verification → evidence-driven redesign. In our motor-glider example, solid geometry checks find a battery collision; Astra moves it 3.6 mm, seven dependent evidence records are invalidated, and fresh checks clear the interference. Dalus is the persistent engineering record through MCP. The output includes CAD, sourced components, simulation diagnostics and a manufacturing candidate package. Sixteen modeled requirements pass; eight remain explicitly unknown, including physical flight.
 
-### 5. User says "Make it actually work"
+**Built during the hackathon:** OpenV's runnable orchestration, proposal/verifier adapters, evidence invalidation and engineering experiments, Dalus MCP integration, aircraft CAD/verification implementation, public browser inspection/simulation experience and candidate-package outputs. Existing external tools are credited; Dalus itself was not newly built for this submission.
 
-Astra receives concrete failures and starts experiments.
+## Fallback
 
-Display experiment history visibly:
-
-```text
-v1  4 failures
-v2  3 failures
-v3  2 failures
-v4  1 failure
-v5  all nominal requirements pass
-```
-
-For each experiment, optionally show:
-
-- hypothesis
-- key parameter changes
-- expected effect
-- measured result
-
-### 6. Evidence updates Dalus
-
-As checks pass, requirements become green because evidence has been recorded.
-
-Click one requirement and show:
-
-- threshold
-- actual result
-- tool
-- design version
-- inputs/assumptions
-- evidence run id
-
-This is a key Dalus moment.
-
-### 7. Manufacturing check
-
-If time permits, select one meaningful fabricated metal component such as a motor bracket.
-
-Send it through RMFG:
-
-- first DFM failure is ideal if deterministic/reliable
-- Astra adjusts geometry
-- second submission passes
-- quote becomes cost evidence
-
-Do not depend on this for the core demo.
-
-### 8. Robustness
-
-Show a short challenge phase if it is reliable:
-
-- battery capacity -15%
-- payload +10%
-- CG shift
-
-Display nominal vs robustness separately.
-
-### 9. Release Design
-
-Only after gates pass, reveal a polished DayRing/PX4-style output experience.
-
-Tabs:
-
-- Overview
-- Verify
-- Exploded
-- Assembly
-- BOM
-- Manufacturing
-- Files
-
-### 10. Assembly payoff
-
-Show:
-
-- exploded aircraft
-- Play Assembly
-- Previous / Next / Replay
-- parts/tools/checks
-
-The geometry itself animates into place.
-
-### 11. Final artifacts
-
-Show buttons for:
-
-- build package
-- STEP/STL
-- BOM
-- verification report
-- illustrated assembly PDF
-- assembly video
-- Open in Dalus
-- optional Open in Onshape
-
-## Stage line
-
-A useful transition after the first CAD appears:
-
-> It looks like an airplane. But that doesn't mean it works.
-
-Then click Verify.
-
-Another useful line:
-
-> Astra is allowed to propose a design. It is not allowed to grade its own homework.
-
-## P0 live demo requirements
-
-Must work live:
-
-- user mission
-- requirements
-- first design state
-- at least two independent verification checks
-- at least one deterministic failure
-- Astra redesign loop
-- re-verification
-- evidence-backed PASS
-- visible experiment history
-
-## P1
-
-- Dalus write-through and evidence trace
-- nice Three.js visualization
-- BOM / real component data
-- evidence invalidation
-
-## P2 / stretch
-
-- RMFG
-- Onshape handoff
-- robustness mode
-- assembly validation
-- assembly animation
-- PDF manual
-- physical P1S print
-
-## Demo reliability strategy
-
-Build the real live path first.
-
-Also record one successful end-to-end run so the UI can replay the real captured trajectory if a network/service integration fails during judging. If replay mode is used, label it clearly as a recorded run rather than pretending it is live.
-
-Cache static reference data for the aircraft demo where terms permit so supplier or solver latency does not ruin the demo.
-
-Do not fake verifier outputs. A recorded real run is acceptable as fallback; invented passing numbers are not.
+A previous 60-second recorded demo is already at https://openv-kohl.vercel.app/demo/openv-demo.mp4 (local `web/public/demo/openv-demo.mp4`). Its edit manifest identifies `run-38f998e18d41`, an earlier real Astra spar-redesign example. It does not show the newest installation repair, STEP inspection or flight-response work. Use it as the deadline fallback and describe its actual earlier run; do not pair the battery-repair narration above with that footage.
