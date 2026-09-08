@@ -1,0 +1,13 @@
+.venv/
+node_modules/
+web/dist/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env
+.env.*
+!.env.example
+.openv/
+artifacts/
+*.egg-info/
+.DS_Store
