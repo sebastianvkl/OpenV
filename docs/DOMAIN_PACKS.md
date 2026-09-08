@@ -108,3 +108,34 @@ The core owns baseline/version handling, evidence admission, deterministic verdi
 An unsupported mission may still produce requirements and a verification plan, but unavailable methods stay explicit UNKNOWNs. Adding a replacement tool requires validating its units, output semantics, assumptions, applicability, and provenance against the contract. Method changes invalidate affected evidence.
 
 P0 should include one minimal non-aircraft dimensional-check regression through the generic runtime and document how to add a real domain or verifier. This validates the boundary without promising a second complete hardware domain today.
+
+## Implemented extension points
+
+The static registry is `openv/domains.py`. `AircraftDomain` supplies:
+
+- `define(proposal, mission_text)` → frozen `HardwareSystem` and `DesignVersion`.
+- `methods()` → registered `Method` adapters declaring versions and input dependencies.
+- `patch(design, changes, experiment_id)` → validated child version; reject unsupported fields.
+- `build(design, scenario, directory)` → artifacts and explicit coverage metadata.
+- `context(...)` and `pending_context(...)` → actual verification inputs and immediate stale-state inputs.
+- `package(...)` → domain-owned fabrication/assembly files and their public artifact references.
+- `read_seed(...)` and `branch(...)` → optional user experiment support, retaining accepted contracts.
+
+The engineer adapter implements `define` and `redesign`, exposes a provider `label`
+and model-call provenance in `calls`. The pipeline owns evidence generation and
+comparison; neither proposer method returns verdicts. The minimal bracket domain
+in `tests/test_pipeline.py` runs an actual dimensional FAIL → repair → invalidation
+→ PASS through `Pipeline.run`, including packaging. It is a boundary regression,
+not a second supported public hardware domain.
+
+To add a verifier, return `ToolOutput` with metrics (`value`, `unit`, `admissible`,
+`reason`), raw results, assumptions and diagnostics. Bind a frozen `Contract` to
+its method/metric and explicit threshold/scope. Declare every consumed source,
+scenario and derived input as a dependency. Missing metrics, wrong units,
+unadmitted assumptions and missing methods produce UNKNOWN. Add a known failing
+case and an input-change invalidation case before using the method in a demo.
+
+The current website's mission schema and visualizer are aircraft-specific. A new
+production domain needs its own validated mission adapter and presentation; it
+can reuse the same orchestration, evidence evaluator, Dalus adapter, job service
+pattern and manifest format. Dynamic plugin discovery is deferred.
