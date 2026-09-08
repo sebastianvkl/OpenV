@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import time
 from contextlib import asynccontextmanager
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -23,6 +24,9 @@ AUTH_DIR = Path(os.environ.get("OPENV_AUTH_DIR", ".openv"))
 
 
 class FileTokenStorage:
+    def __init__(self,allow_reauthorization=False):
+        self.allow_reauthorization=allow_reauthorization
+
     def _read(self, name, schema):
         path = AUTH_DIR / name
         return schema.model_validate_json(path.read_text()) if path.exists() else None
@@ -35,10 +39,48 @@ class FileTokenStorage:
             stream.write(record.model_dump_json())
 
     async def get_tokens(self):
-        return self._read("dalus-tokens.json", OAuthToken)
+        tokens=self._read("dalus-tokens.json", OAuthToken)
+        if not tokens:return None
+        expiry=AUTH_DIR/"dalus-expiry.json"
+        expires_at=json.loads(expiry.read_text()).get("expires_at",0) if expiry.exists() else 0
+        if expires_at>time.time()+120:return tokens
+        # MCP 1.30 does not restore persisted token expiry and treats a resource
+        # 401 as a new interactive authorization. Refresh before opening a short
+        # MCP session. No engineering data is accessed through these OAuth calls.
+        info=await self.get_client_info()
+        if not tokens.refresh_token or not info or not info.issuer:
+            if self.allow_reauthorization:return None
+            raise RuntimeError("Dalus session expired; run python -m openv.dalus login")
+        issuer=str(info.issuer).rstrip("/")
+        expected=os.environ.get("DALUS_MCP_URL","https://app.dalus.io/api/mcp")
+        origin=urlsplit(expected)
+        if issuer!=f"{origin.scheme}://{origin.netloc}" or origin.scheme!="https":
+            raise RuntimeError("Stored Dalus OAuth issuer does not match the configured service")
+        async with httpx.AsyncClient(timeout=20,follow_redirects=False) as client:
+            response=await client.get(issuer+"/.well-known/oauth-authorization-server")
+            response.raise_for_status();metadata=response.json()
+            endpoint=urlsplit(metadata["token_endpoint"])
+            if str(metadata.get("issuer","")).rstrip("/")!=issuer or (endpoint.scheme,endpoint.netloc)!=(origin.scheme,origin.netloc):
+                raise RuntimeError("Dalus OAuth metadata changed issuer or token origin")
+            # Discovery adds load-balancer cookies. This registered CLI uses
+            # refresh-token authentication, not browser cookie authentication.
+            client.cookies.clear()
+            response=await client.post(metadata["token_endpoint"],data={"grant_type":"refresh_token",
+                "refresh_token":tokens.refresh_token,"client_id":info.client_id,"resource":issuer+"/"})
+            if response.status_code!=200:
+                if self.allow_reauthorization:return None
+                raise RuntimeError(f"Dalus refresh rejected (HTTP {response.status_code}); run python -m openv.dalus login")
+            fresh=OAuthToken.model_validate(response.json())
+            if not fresh.refresh_token:fresh=fresh.model_copy(update={"refresh_token":tokens.refresh_token})
+            await self.set_tokens(fresh)
+            return fresh
 
     async def set_tokens(self, tokens):
         self._write("dalus-tokens.json", tokens)
+        path=AUTH_DIR/"dalus-expiry.json"
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600)
+        with os.fdopen(fd,"w") as stream:
+            json.dump({"expires_at":time.time()+(tokens.expires_in or 0)},stream)
 
     async def get_client_info(self):
         return self._read("dalus-client.json", OAuthClientInformationFull)
@@ -61,7 +103,7 @@ async def session(redirect=unavailable_redirect, callback=None):
             redirect_uris=["http://localhost:8766/callback"],
             grant_types=["authorization_code", "refresh_token"], response_types=["code"],
             token_endpoint_auth_method="none", scope="openid profile email offline_access mcp:read mcp:write"),
-        storage=FileTokenStorage(), redirect_handler=redirect, callback_handler=callback,
+        storage=FileTokenStorage(allow_reauthorization=callback is not None), redirect_handler=redirect, callback_handler=callback,
     )
     async with httpx.AsyncClient(auth=auth, timeout=60) as client:
         async with streamable_http_client(url, http_client=client) as (read, write, _):
@@ -136,4 +178,3 @@ if __name__ == "__main__":
             async with session() as connection:
                 await discover(connection)
         asyncio.run(main())
-

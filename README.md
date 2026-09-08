@@ -4,7 +4,7 @@
 
 The first domain is a conventional electric RC motor-glider. Astra proposes; the runtime evaluates measurements from AeroSandbox, CAD geometry checks and deterministic calculations. Requirements use PASS / FAIL / UNKNOWN. Changing a design invalidates dependent evidence. Dalus is the live engineering system of record through MCP exclusively.
 
-[Public demo](https://openv.3.92.144.120.sslip.io) · [Execution status](docs/EXECUTION_PLAN.md)
+[Public demo](https://openv-kohl.vercel.app) · [Execution status](docs/EXECUTION_PLAN.md)
 
 Published examples identify their proposer. Live Astra requires server credentials; an offline fixture is not an Astra run.
 

@@ -13,3 +13,5 @@ artifacts/
 .DS_Store
 
 .vercel/
+.vercel
+.env*

@@ -3,7 +3,7 @@
 Updated September 8, 2026. This is implementation evidence, not engineering release.
 
 - Public repository: https://github.com/sebastianvkl/OpenV
-- Public website: https://openv.3.92.144.120.sslip.io
+- Public website: https://openv-kohl.vercel.app
 - `dalus-reference-002`: labeled offline proposer, actual Dalus MCP, actual CAD,
   AeroSandbox and beam calculations. Initial 8 mm spar deflection fails; a 10 mm
   spar passes the explicitly modeled deflection check. Final release UNKNOWN.
@@ -12,16 +12,13 @@ Updated September 8, 2026. This is implementation evidence, not engineering rele
   margin and spar deflection fail. Dalus commit read-back is evaluated. The
   package has 57 hash-checked entries, including individual cut-part STEP files,
   printable-part STLs, stock dimensions, BOM, evidence and regeneration source.
-- 22 automated tests pass, including a second minimal domain through the shared
+- 26 automated tests pass, including a second minimal domain through the shared
   runtime, forbidden changes, stale/conflicting evidence, branch baselines and
   package mass accounting.
 
 ## Still required for acceptance
 
-A real Astra API trajectory and new public plain-English mission have not been
-validated while credentials are absent. Do not describe fixtures or explicit
-user experiments as Astra runs. The public model controls remain unavailable
-until credentials are provisioned.
+Astra credentials are provisioned and the API has returned actual proposals, including a geometry rejection and a corrected proposal. The accepted proposal is continuing after a Dalus token-expiry fix. A complete Astra repair trajectory and a fresh public plain-English mission still need validation. Do not describe fixtures or explicit user experiments as Astra runs.
 
 CAD/fabrication outputs remain a candidate: hardware selections, joints,
 retention, controls/hinges/linkages and manufacturing details remain open. The

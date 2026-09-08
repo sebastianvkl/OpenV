@@ -212,3 +212,11 @@ A deterministic fixture proposer enables account-free checks with actual CAD and
 ## D034 - Vercel website with the existing engineering backend
 
 **Decision (user steering, 2026-09-08):** Deploy the website on Vercel. Keep the native Python CAD/solver worker, artifacts and Dalus session on the existing host. Vercel serves the Vite build and proxies `/api/*` and `/artifacts/*` through external rewrites. Disable caching for changing run/evidence responses. This changes the website host without splitting or replacing the engineering loop. Vercel deployment credentials are separate from Astra/Dalus runtime credentials.
+
+## D035 - Rejected model proposals remain observable engineering attempts
+
+**Decision (live Astra integration, 2026-09-08):** The first live mission proposal violated the spar-to-tip geometry constraint and was rejected. Do not silently clamp such proposals. Permit up to three structured-proposal attempts, returning the exact validator errors and previous proposal to Astra. Retain response IDs, model/usage metadata and acceptance/rejection history even when the SDK's Pydantic parser rejects the output. Tests exercise the real OpenAI SDK parser through an offline HTTP transport. Schema acceptance remains distinct from engineering PASS; CAD and external verification still run independently.
+
+## D036 - Durable Dalus OAuth expiry and refresh
+
+**Decision (live integration, 2026-09-08):** Persist absolute access-token expiry alongside restricted OAuth files. MCP 1.30 reloads tokens without their expiry timestamp and goes directly to interactive authorization after a resource 401. Refresh near-expiry tokens before each short MCP session using the registered issuer's discovered token endpoint. Validate issuer/token origin, do not follow credential-bearing redirects, and preserve a refresh token when the provider omits a replacement. Metadata discovery injects load-balancer cookies; the CLI's refresh-token request must use token authentication without those browser cookies. Real refresh and subsequent authenticated MCP discovery succeeded. Interactive `login` can obtain a new grant when refresh is rejected; ordinary engineering jobs stop with UNKNOWN rather than inventing a connection.
