@@ -45,6 +45,7 @@ export default function useStepModel(enabled, url, geometry, retry) {
           root: data.root,
           hash: data.hash,
           bytes: data.bytes,
+          cached: data.cached,
         };
         clearTimeout(timer);
         worker.terminate();
@@ -60,6 +61,7 @@ export default function useStepModel(enabled, url, geometry, retry) {
     worker.postMessage({
       url: new URL(url, location.href).href,
       base: location.origin,
+      bypassCache: retry > 0,
     });
     return () => {
       active = false;

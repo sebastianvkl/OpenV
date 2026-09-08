@@ -286,3 +286,12 @@ Ideal attitude tracking and prescribed thrust are assumptions; this is not a con
 CAD edges, part isolation, exploded placement and uncapped section cuts are inspection controls. Custom airframe parts retain their generated CAD details. Purchased components remain simplified envelopes; manufacturer product photos are linked presentation references where available, not replacement vendor geometry or verification inputs. Missing vendor CAD, connectors, leads and internals stay disclosed. No engineering state, Dalus records, requirements or existing artifacts change.
 
 The unmodified LGPL-2.1 reader JS/WASM is served separately with its license, pinned source/build link and replacement instructions; OpenV application code remains MIT. npm prebuild/predev prepares these assets from the locked dependency. Do not commit generated kernel binaries.
+
+
+## D046 — CAD inspection controls and hash-checked display cache
+
+**Decision (continued assembly work, 2026-09-08):** Add searchable per-part visibility, explicit frame/reset controls and XYZ dimensions derived from tessellated CAD bounds. The labels describe overall extents in the canonical coordinate axes, not manufacturing tolerances, exact clearance measurements or new verification evidence. Section-clipped surfaces must not intercept selection of visible interior geometry. These controls never write engineering state, regenerate CAD or update Dalus.
+
+Persist at most two tessellations in browser IndexedDB. On page reload, download the selected STEP again, compute its SHA-256, and key reuse by that hash plus the pinned reader/version/settings revision. A URL match alone cannot admit a persistent cache entry. Cached meshes still undergo the existing identity/placement checks before frozen catalog metadata is attached. Failed source downloads cannot fall back to a ready cached model. Changed STEP bytes trigger parsing; unavailable browser storage falls back to ordinary import, and explicit retry bypasses stored meshes. Cache records are presentation data, not evidence.
+
+A further primary-source review found product photos/manuals/drawings for the selected EMAX and RadioMaster parts and spanwise geometry tables at https://www.apcprop.com/propeller-technical-data/. No exact, usable manufacturer STEP model was established for these selected purchased parts. Keep their existing labeled envelopes; do not reconstruct unspecified connectors, internals or blade surfaces and call them vendor CAD.

@@ -1,5 +1,17 @@
 // Identity/scale checks prevent attaching one component's specs to another STEP mesh.
 // These display checks never create engineering PASS or replace the source evidence.
+export function meshBounds(part) {
+  const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+  const points = part.mesh.positions;
+  if (!points.length || points.length % 3) throw new Error("Incomplete CAD coordinates");
+  for (let i = 0; i < points.length; i++) {
+    if (!Number.isFinite(points[i])) throw new Error("Nonfinite CAD coordinate");
+    min[i % 3] = Math.min(min[i % 3], points[i]);
+    max[i % 3] = Math.max(max[i % 3], points[i]);
+  }
+  return { min, max, size: max.map((v, i) => v - min[i]), center: max.map((v, i) => (v + min[i]) / 2) };
+}
+
 export function stepPartNames(root, count) {
   const names = new Array(count);
   function visit(node) {

@@ -11,6 +11,7 @@ import {
 import * as THREE from "three";
 import FlightWorld from "./flight-world.jsx";
 import { InstallationScene } from "./installation-scene.jsx";
+import { meshBounds } from "./step-model.mjs";
 
 export const point = ([x, y, z]) => [y, z, 0.45 - x];
 const offsets = (part) =>
@@ -236,6 +237,7 @@ function Part({
       castShadow
       receiveShadow
       onClick={(e) => {
+        if (clippingPlanes.some((plane) => plane.distanceToPoint(e.point) < 0)) return;
         e.stopPropagation();
         onSelect(part);
       }}
@@ -289,7 +291,7 @@ function Part({
     </mesh>
   );
 }
-function Camera({ preset, controls, focus, explode }) {
+function Camera({ preset, controls, focus, explode, frameRequest }) {
   const { camera } = useThree();
   useEffect(() => {
     const positions = {
@@ -304,10 +306,9 @@ function Camera({ preset, controls, focus, explode }) {
         (v, i) => v + offsets(focus)[i] * (explode || 0),
       );
       const size = Math.max(...focus.dimensions_m) * 2.1;
+      const direction = preset === "top" ? [0, 1.6, 0.001] : preset === "side" ? [1.6, 0.05, 0] : [1, 0.7, 1];
       camera.position.set(
-        center[0] + size,
-        center[1] + size * 0.7,
-        center[2] + size,
+        ...center.map((v, i) => v + size * direction[i]),
       );
       camera.lookAt(...center);
       controls.current?.target.set(...center);
@@ -318,8 +319,30 @@ function Camera({ preset, controls, focus, explode }) {
     camera.lookAt(...target);
     controls.current?.target.set(...target);
     controls.current?.update();
-  }, [preset, focus?.id, !!focus, focus ? explode : null]);
+  }, [preset, focus?.id, !!focus, focus ? explode : null, frameRequest]);
   return null;
+}
+function CadDimensions({ part, explode }) {
+  const ref = useRef();
+  const bounds = useMemo(() => meshBounds(part), [part]);
+  const box = useMemo(() => {
+    const shape = new THREE.BoxGeometry(bounds.size[1], bounds.size[2], bounds.size[0]);
+    const result = new THREE.EdgesGeometry(shape);
+    shape.dispose();
+    return result;
+  }, [bounds]);
+  useEffect(() => () => box.dispose(), [box]);
+  useFrame((_, delta) => ref.current?.position.lerp(new THREE.Vector3(...offsets(part).map((v) => v * explode)), 1 - Math.exp(-8 * delta)));
+  const [x, y, z] = bounds.min, [X, Y, Z] = bounds.max;
+  const positions = [[(x + X) / 2, y, z], [x, (y + Y) / 2, z], [x, y, (z + Z) / 2]];
+  return <group ref={ref}>
+    <lineSegments geometry={box} position={point(bounds.center)} raycast={() => null}>
+      <lineBasicMaterial color="#315d49" transparent opacity={0.65} depthTest={false} />
+    </lineSegments>
+    {positions.map((position, i) => <Html key={i} position={point(position)} center style={{ pointerEvents: "none" }}>
+      <span className="cad-dimension-label">{"XYZ"[i]} · {(bounds.size[i] * 1000).toFixed(1)} mm</span>
+    </Html>)}
+  </group>;
 }
 function Label({ position, children, dark = false }) {
   return (
@@ -685,6 +708,10 @@ export default function Scene({
   isolate = false,
   section = false,
   sectionZ = 0.03,
+  cadHidden = [],
+  cadDimensions = false,
+  cadFocus = 0,
+  cadReset = 0,
 }) {
   const controls = useRef();
   const clippingPlanes = useMemo(
@@ -694,10 +721,9 @@ export default function Scene({
         : [],
     [stepMode, section, sectionZ],
   );
-  const visibleParts =
-    stepMode && isolate && selected
-      ? geometry.parts.filter((p) => p.id === selected.id)
-      : geometry.parts;
+  const visibleParts = geometry.parts.filter((p) => !stepMode || (
+    !cadHidden.includes(p.id) && (!isolate || !selected || p.id === selected.id)
+  ));
   const collided = new Set(
     installation?.available
       ? [
@@ -829,6 +855,9 @@ export default function Scene({
         {!sim && !stepMode && (
           <Details {...{ geometry, explode, labels, wiring, inside }} />
         )}
+        {stepMode && cadDimensions && selected && !cadHidden.includes(selected.id) && (
+          <CadDimensions part={geometry.parts.find((p) => p.id === selected.id) || selected} explode={explode} />
+        )}
         {sim && !flight && (
           <>
             <Setting environment={environment} />
@@ -879,7 +908,8 @@ export default function Scene({
           <Camera
             preset={preset}
             controls={controls}
-            focus={stepMode && isolate ? selected : null}
+            focus={stepMode && (isolate || cadFocus > 0) ? selected : null}
+            frameRequest={stepMode ? `${cadFocus}:${cadReset}` : 0}
             explode={explode}
           />
         </>

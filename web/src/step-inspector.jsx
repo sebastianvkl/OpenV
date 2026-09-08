@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Download, RefreshCw } from "lucide-react";
 import { ReferenceImage } from "./component-reference.jsx";
 export function StepInspector({
@@ -18,7 +18,14 @@ export function StepInspector({
   setExplode,
   retry,
   onSelect,
+  hidden,
+  onVisibility,
+  dimensions,
+  setDimensions,
+  onFrame,
+  onReset,
 }) {
+  const [query, setQuery] = useState("");
   const ready = state.status === "ready";
   const components =
     geometry?.parts
@@ -39,6 +46,12 @@ export function StepInspector({
               : "Loading STEP"}
         </span>
       </div>
+      <div className="cad-display-controls">
+        <label><input type="checkbox" checked={dimensions} disabled={!selected} onChange={(e) => setDimensions(e.target.checked)} /> Dimensions</label>
+        <button className="text-button" disabled={!selected} onClick={onFrame}>Frame selected</button>
+        <button className="text-button" onClick={onReset}>Reset view</button>
+      </div>
+      {dimensions && selected && <p className="tiny">Overall CAD bounds in mm; not a tolerance or clearance measurement.</p>}
       <p className="tiny">
         Inspect the exported solid geometry. Custom parts retain their CAD
         detail; purchased components remain explicitly labeled envelopes.
@@ -123,6 +136,18 @@ export function StepInspector({
           . Use Isolate selected to inspect it closely.
         </p>
       )}
+      <details className="cad-parts">
+        <summary>Assembly parts · {geometry?.parts.length || 0}{hidden.length ? ` · ${hidden.length} hidden` : ""}</summary>
+        <input aria-label="Search assembly parts" placeholder="Search parts or manufacturer…" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <div className="cad-part-list">
+          {(geometry?.parts || []).filter((p) => `${p.name} ${p.group} ${p.component?.manufacturer || ""} ${p.component?.part_number || ""}`.toLowerCase().includes(query.toLowerCase())).map((part) => (
+            <div className={selected?.id === part.id ? "active" : ""} key={part.id}>
+              <input type="checkbox" checked={!hidden.includes(part.id)} aria-label={`Show ${part.name}`} onChange={() => onVisibility(part.id)} />
+              <button onClick={() => onSelect(part)}><b>{part.name}</b><small>{part.process === "purchase" ? "Component envelope" : part.process === "provided" ? "Payload envelope" : "Custom / stock CAD"}</small></button>
+            </div>
+          ))}
+        </div>
+      </details>
       {!selected && components.length > 0 && (
         <>
           <span className="tiny-label">
@@ -150,6 +175,7 @@ export function StepInspector({
             placement checked against the captured assembly for display; this
             adds no engineering PASS.
           </p>
+          <p className="tiny">{state.cached ? "Saved geometry reused after rechecking the downloaded STEP hash." : "Read directly from STEP; saved locally for faster reloads when browser storage is available."}</p>
           <code>{state.hash}</code>
           <a href="/cad-kernel/NOTICE.txt" target="_blank" rel="noreferrer">
             Open-source reader & license ↗

@@ -1707,3 +1707,17 @@ code {
 .step-import-details code { display:block; word-break:break-all; font-size:8px; margin:12px 0; }
 .step-inspector .experiment-slider small { display:block; font-size:9px; color:#8a9486; }
 @media(max-width:900px) { .step-source-note { display:none; } }
+
+.cad-parts { margin: 14px 0 20px; font-size: 11px; }
+.cad-parts summary { cursor: pointer; padding: 8px 0; }
+.cad-parts > input { width: 100%; box-sizing: border-box; margin: 8px 0; padding: 10px; border: 1px solid #c9d4c4; border-radius: 4px; background: #f8faf5; font-size: 11px; }
+.cad-part-list { max-height: 260px; overflow: auto; border: 1px solid #d8dfd2; border-radius: 4px; }
+.cad-part-list > div { display: flex; gap: 6px; padding: 8px; border-bottom: 1px solid #e1e7dc; }
+.cad-part-list > div.active { background: #e0e9dd; }
+.cad-part-list input { accent-color: #315d49; }
+.cad-part-list button { min-width: 0; text-align: left; flex: 1; }
+.cad-part-list b { display: block; font-size: 10px; font-weight: 500; }
+.cad-part-list small { display: block; font-size: 8px; color: #7b8b73; margin-top: 4px; }
+.cad-display-controls button { font-size: 10px; }
+.cad-display-controls button:disabled { opacity: .4; cursor: default; }
+.cad-dimension-label { display: block; white-space: nowrap; padding: 4px 6px; font-size: 10px; color: #254f3b; background: #f8fbf2ee; border: 1px solid #a8b99e; border-radius: 3px; }

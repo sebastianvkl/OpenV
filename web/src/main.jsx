@@ -198,6 +198,10 @@ function App() {
   const [assemblyView, setAssemblyView] = useState("cad");
   const [cadEdges, setCadEdges] = useState(true),
     [isolate, setIsolate] = useState(false);
+  const [cadHidden, setCadHidden] = useState([]),
+    [cadDimensions, setCadDimensions] = useState(false),
+    [cadFocus, setCadFocus] = useState(0),
+    [cadReset, setCadReset] = useState(0);
   const [section, setSection] = useState(false),
     [sectionZ, setSectionZ] = useState(0.03),
     [stepRetry, setStepRetry] = useState(0);
@@ -341,6 +345,11 @@ function App() {
   const version = run?.versions?.find((v) => v.id === selectedVersion);
   const geometryFile = version?.geometry_file;
   useEffect(() => setPerturbation({}), [runId, selectedVersion]);
+  useEffect(() => {
+    setCadHidden([]);
+    setCadFocus(0);
+    setIsolate(false);
+  }, [runId, selectedVersion]);
   useEffect(() => {
     if (!geometryFile || !runId) {
       setGeometry(null);
@@ -609,6 +618,10 @@ function App() {
                 onFlightSample: setFlightSample,
                 stepMode: stepActive,
                 cadEdges,
+                cadHidden,
+                cadDimensions,
+                cadFocus,
+                cadReset,
                 isolate,
                 section,
                 sectionZ,
@@ -717,7 +730,7 @@ function App() {
             </div>
           )}
         </aside>
-        {stepActive && geometry && (
+        {stepActive && geometry && (!selected || stepModel.status !== "ready") && (
           <div className={`step-source-note ${stepModel.status}`} role="status">
             {stepModel.status === "ready"
               ? `STEP CAD · ${stepModel.geometry.parts.length} named parts · ${stepModel.faces.toLocaleString()} faces`
@@ -896,6 +909,15 @@ function App() {
               setSectionZ={setSectionZ}
               explode={explode}
               setExplode={setExplode}
+              hidden={cadHidden}
+              onVisibility={(id) => {
+                setCadHidden((ids) => ids.includes(id) ? ids.filter((v) => v !== id) : [...ids, id]);
+                if (selected?.id === id) { setSelected(null); setIsolate(false); }
+              }}
+              dimensions={cadDimensions}
+              setDimensions={setCadDimensions}
+              onFrame={() => { setCadFocus((n) => n + 1); setAutoRotate(false); setCadHidden((ids) => ids.filter((id) => id !== selected?.id)); }}
+              onReset={() => { setCadHidden([]); setCadFocus(0); setCadReset((n) => n + 1); setSelected(null); setIsolate(false); setSection(false); setExplode(0); setInside(false); setPreset("perspective"); setAutoRotate(false); }}
               retry={() => setStepRetry((n) => n + 1)}
               onSelect={(part) => {
                 setSelected(part);

@@ -357,3 +357,12 @@ Final deployed acceptance: `run-365c68904f40` reverified the unchanged Astra-rep
 - [x] Verify final Vercel deployment, version switching and existing flight playback. Production run `run-365c68904f40` loaded 45 parts / 2,320 CAD faces from its 11.7 MB STEP in 52.4 seconds. Browser checks passed for explosion, selection/specs, isolation, section cuts, guide navigation, cached return and mobile layout with no JavaScript errors. Local multi-version switching/cancellation and the existing computed-flight regression also passed.
 
 First local browser import took 48.6 seconds for the 11.6 MB fixture; cached revisits avoid parsing. Browser tessellation is presentation only and leaves requirements, Dalus and package evidence unchanged.
+
+
+### Continued assembly inspection
+
+- [x] Search the assembly by part/manufacturer, hide individual parts, frame selection, reset the view and display mesh-derived XYZ bounds. Keep dimensions explicitly separate from tolerances/clearance verification.
+- [x] Persist two parsed STEP displays in browser storage, keyed by source SHA-256 and reader settings. Re-download/hash the STEP before persistent reuse; keep import admission checks and bypass the cache on explicit retry.
+- [x] Five viewer unit checks pass. Local browser acceptance exercised part visibility/reset, close-up/top views, XYZ labels, cached reload, blocked source, changed source, cancellation and mobile layout, with no JavaScript errors or engineering writes. First import took 48.6 s; cached reload took 2.0 s.
+- [x] Recheck primary manufacturer resources for exact purchased-part CAD; retain labeled envelopes because no trustworthy exact STEP download was established.
+- [ ] Verify and publish these controls/cache against the live 45-part candidate.
