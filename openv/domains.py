@@ -54,12 +54,15 @@ class AircraftDomain:
 
     def define(self,proposal,mission_text):
         from openv import aircraft
-        from openv.core import Requirement
+        from openv.core import Requirement,digest
         mission=proposal.mission.model_copy(update={"text":mission_text})
         hardware=aircraft.system(mission)
         extra=tuple(Requirement(id=f"uncovered-{i+1}",statement=clause,level="mission",owner="aircraft",
             contracts=(),origin="uncovered user clause") for i,clause in enumerate(proposal.uncovered_clauses))
         hardware=hardware.model_copy(update={"requirements":hardware.requirements+extra})
+        if extra:
+            hardware=hardware.model_copy(update={"baseline_id":"baseline-"+digest({
+                "scenario":hardware.scenario,"requirements":[r.model_dump() for r in hardware.requirements]})[:12]})
         return hardware,aircraft.initial_design(hardware,proposal.parameters)
 
     def patch(self,design,changes,experiment_id):

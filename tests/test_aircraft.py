@@ -63,3 +63,13 @@ def test_aero_symmetric_wing_reference():
     assert float(shifted["D"][0])==pytest.approx(float(output["D"][0]))
     assert float(shifted["x_np"][0])==pytest.approx(float(output["x_np"][0]),abs=.001)
     assert float(shifted["Cma"][0])>float(output["Cma"][0])
+
+
+def test_uncovered_requirements_are_part_of_frozen_baseline():
+    from openv.engineer import FixtureEngineer
+    from openv.domains import AircraftDomain
+    proposal=FixtureEngineer().define('Reference mission')
+    domain=AircraftDomain()
+    first,_=domain.define(proposal,'Reference mission')
+    second,_=domain.define(proposal.model_copy(update={'uncovered_clauses':['Additional unverified mission clause']}),'Reference mission')
+    assert first.baseline_id!=second.baseline_id

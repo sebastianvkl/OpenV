@@ -173,6 +173,8 @@ class Pipeline:
             design,context,evidence,evaluations=candidate,new_context,new_evidence,new_evaluations
             self.event("experiment-complete","Experiment recorded with actual results",experiment_id=exp.id)
         self.state["model_calls"]=self.engineer.calls
+        if stop=="experiment_limit" and not any(e.status==Status.FAIL for e in evaluations):
+            stop="verified_modeled_checks_with_unknowns" if any(e.status==Status.UNKNOWN for e in evaluations) else "requirements_passed"
         self.state["stop_reason"]=stop
         self.package(hardware,design,geometry)
         self.state["status"]="complete"
