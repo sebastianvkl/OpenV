@@ -723,6 +723,11 @@ function App() {
                   : "RECORDED ENGINEERING RUN"}
               </span>
               <p>{run.provider}</p>
+              {run.dalus && (
+                <button className="text-button" onClick={() => showEvidence("dalus")}>
+                  Dalus MCP · {run.dalus.commit} <ArrowUpRight size={12} />
+                </button>
+              )}
               {run.system?.scenario && (
                 <p className="mission-facts">
                   {number(run.system.scenario.payload_kg * 1000, 0)} g payload
@@ -1309,7 +1314,7 @@ function App() {
               <span>{run?.engineering_store}</span>
             </div>
             {run?.dalus && (
-              <details className="dalus-trace">
+              <details className="dalus-trace" open={detail === "dalus"}>
                 <summary>Dalus system of record · {run.dalus.commit}</summary>
                 <p className="tiny">
                   Requirements, architecture, parameters, interfaces,
