@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+from typing import Literal
 
 from pydantic import Field, ValidationError
 
@@ -16,6 +17,19 @@ class MissionProposal(Record):
     parameters: Parameters
     rationale: str
     uncovered_clauses: list[str]
+
+
+class ParameterChange(Record):
+    parameter: Literal[tuple(Parameters.model_fields)]
+    value: float
+
+
+class RedesignProposal(Record):
+    """Closed wire schema: strict structured outputs cannot accept open maps."""
+    problem: str
+    hypothesis: str
+    changes: list[ParameterChange]
+    expected_effect: str
 
 
 INSTRUCTIONS = """You are the proposing engineer in OpenV, a verification-first hardware V pipeline.
@@ -86,8 +100,13 @@ class AstraEngineer:
             "mission_bounds":Mission.model_json_schema()})
 
     def redesign(self, context):
-        return self._request(Proposal, {"task":"Propose one engineering experiment from actual failure evidence.",
+        result = self._request(RedesignProposal, {"task":"Propose one engineering experiment from actual failure evidence.",
             "context":context,"allowed_parameters":Parameters.model_json_schema()})
+        changes={entry.parameter:entry.value for entry in result.changes}
+        if len(changes)!=len(result.changes):
+            raise ValueError("Astra proposed duplicate parameter changes")
+        return Proposal(problem=result.problem,hypothesis=result.hypothesis,
+            changes=changes,expected_effect=result.expected_effect)
 
 
 class FixtureEngineer:
