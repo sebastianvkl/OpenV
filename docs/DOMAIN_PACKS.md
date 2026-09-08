@@ -116,7 +116,7 @@ The static registry is `openv/domains.py`. `AircraftDomain` supplies:
 - `define(proposal, mission_text)` → frozen `HardwareSystem` and `DesignVersion`.
 - `methods()` → registered `Method` adapters declaring versions and input dependencies.
 - `patch(design, changes, experiment_id)` → validated child version; reject unsupported fields.
-- `build(design, scenario, directory)` → artifacts and explicit coverage metadata.
+- `build(design, hardware, directory)` → artifacts and explicit coverage metadata.
 - `context(...)` and `pending_context(...)` → actual verification inputs and immediate stale-state inputs.
 - `package(...)` → domain-owned fabrication/assembly files and their public artifact references.
 - `read_seed(...)` and `branch(...)` → optional user experiment support, retaining accepted contracts.

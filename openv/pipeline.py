@@ -45,10 +45,10 @@ class Pipeline:
         # A source, placement or geometry change therefore propagates transitively.
         return self.domain.context(hardware,design,geometry)
 
-    def geometry(self, design, mission):
+    def geometry(self, design, hardware):
         self.event("design","Generating parametric CAD and CAD-derived mass properties",design_id=design.id)
         directory=self.directory/design.id
-        geometry=self.domain.build(design,mission,directory)
+        geometry=self.domain.build(design,hardware,directory)
         write_json(directory/"design.json",design.model_dump())
         self.state["versions"].append({**design.model_dump(),"geometry_file":f"{design.id}/geometry.json"})
         self.state["current_design_id"]=design.id
@@ -111,7 +111,7 @@ class Pipeline:
             self.state["dalus"]=self.store.create_system(hardware,design)
             if user_experiment:self.store.record_user_experiment(user_experiment)
         self.event("requirements","Mission baseline and verification contracts frozen",baseline_id=hardware.baseline_id)
-        geometry=self.geometry(design,hardware.scenario)
+        geometry=self.geometry(design,hardware)
         context=self.context(hardware,design,geometry)
         evidence,evaluations=self.verify(hardware,design,context)
         if seed:
@@ -161,7 +161,7 @@ class Pipeline:
             self.event("invalidated","Candidate committed; dependent evidence is stale",experiment=exp.model_dump())
             if self.store:
                 self.store.record_experiment(hardware,design,candidate,exp,self.state["evaluations"])
-            geometry=self.geometry(candidate,hardware.scenario)
+            geometry=self.geometry(candidate,hardware)
             new_context=self.context(hardware,candidate,geometry)
             new_evidence,new_evaluations=self.verify(hardware,candidate,new_context,evidence)
             actual={e.requirement_id:{"before":next(old.status.value for old in evaluations if old.requirement_id==e.requirement_id),

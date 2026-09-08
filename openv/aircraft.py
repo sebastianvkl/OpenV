@@ -58,6 +58,8 @@ def catalog() -> tuple[Component, ...]:
         return Property(value=value, unit=unit, quality=quality, source=source)
     esc = "https://www.hobbywing.com/uploads/file/20240717/003cfdbd5f9fad6ac356f2396c8103b3.pdf"
     motor = "https://shop.emax-usa.com/collections/wing-uav/products/emx-mt-0409-gt2215-1180kv"
+    motor_table="https://cdn.shopify.com/s/files/1/0469/7358/3518/t/3/assets/EMX-MT-0406-DES-1.jpg?v=1598528110"
+    motor_drawing="https://cdn.shopify.com/s/files/1/0469/7358/3518/t/3/assets/EMX-MT-0406-DES-2.jpg?v=1598528111"
     battery = "https://www.tattuworld.com/products/tattu-classic-1300mah-3s1p-11-1v-75c-fpv-lipo-battery.html"
     return (
         Component(id="esc", name="Skywalker 20A V2", manufacturer="Hobbywing", part_number="30205200",
@@ -66,8 +68,12 @@ def catalog() -> tuple[Component, ...]:
                 "length_m":prop(.045,"m",esc), "width_m":prop(.023,"m",esc), "height_m":prop(.008,"m",esc),
                 "bec_v":prop(5,"V",esc), "bec_a":prop(3,"A",esc)}),
         Component(id="motor", name="EMAX GT2215 1180KV", manufacturer="EMAX", part_number="EMX-MT-0409",
-            properties={"kv":prop(1180,"rpm/V",motor), "mass_kg":prop(.060,"kg","Pending exact motor datasheet","estimated"),
-                        "diameter_m":prop(.028,"m","Envelope pending vendor drawing","estimated")}),
+            revision="gt2215-family-drawing-1598528111",
+            properties={"kv":prop(1180,"rpm/V",motor),"mass_kg":prop(.070,"kg",motor_table),
+                "diameter_m":prop(.0285,"m",motor_drawing),"body_length_m":prop(.0335,"m",motor_drawing),
+                "shaft_diameter_m":prop(.004,"m",motor_table),
+                "mount_horizontal_m":prop(.019,"m",motor_drawing),"mount_vertical_m":prop(.016,"m",motor_drawing),
+                "mount_thread":prop("4 × M3","1",motor_drawing)}),
         Component(id="battery", name="Tattu Classic 1300mAh 3S 75C", manufacturer="Tattu", part_number="TAA13003S75X6",properties={
             "mass_kg":prop(.122,"kg",battery),"cells":prop(3,"1",battery),
             "capacity_ah":prop(1.3,"Ah",battery),"nominal_v":prop(11.1,"V",battery),

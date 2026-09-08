@@ -14,7 +14,7 @@ from openv.aircraft import MATERIALS, Parameters, catalog, wing_sections
 from openv.core import Measurement, Method, ToolOutput, digest
 
 
-def build(parameters: dict, mission: dict, output_dir: Path) -> dict:
+def build(parameters: dict, mission: dict, output_dir: Path, components=None) -> dict:
     import aerosandbox as asb
     import numpy as np
     from build123d import (Box, CenterOf, Compound, Cylinder, Location, Plane, Solid,
@@ -25,7 +25,14 @@ def build(parameters: dict, mission: dict, output_dir: Path) -> dict:
     cad_dir = output_dir / "cad"
     cad_dir.mkdir(exist_ok=True)
     parts, shapes = [], []
-    sourced_parts={c.id:c for c in catalog()}
+    from openv.core import Component
+    sourced_parts={c.id:c for c in (Component.model_validate(item) for item in (catalog() if components is None else components))}
+
+    def dimension(component,key,legacy_value):
+        value=sourced_parts[component].properties.get(key)
+        if value is None:return legacy_value
+        if value.unit!="m":raise ValueError(f"{component}.{key} must use meters")
+        return float(value.value)
 
     def add(id, label, shape, group, process="print", mass_kg=None, color="#e2e9df", note="", stock=None):
         shape.label = id
@@ -46,7 +53,7 @@ def build(parameters: dict, mission: dict, output_dir: Path) -> dict:
         elif process.startswith("cut-"):
             export_step(shape,str(cad_dir/f"{id}.step"))
         parts.append({"id":id,"name":label,"group":group,"process":process,"mass_kg":mass,
-            "mass_quality":"computed with assumed material density" if mass_kg is None else "allocated; see source catalog",
+            "mass_quality":component.properties["mass_kg"].quality if component and process=="purchase" and "mass_kg" in component.properties else "computed with assumed material density" if mass_kg is None else "allocated; see source catalog",
             "dimensions_m":dimensions,"centroid_m":centroid,"color":color,"valid":shape_valid,
             "volume_m3":float(shape.volume)*1e-9,"mesh":mesh,"note":note,
             "stock":stock or {},
@@ -173,10 +180,16 @@ def build(parameters: dict, mission: dict, output_dir: Path) -> dict:
     add("motor-pylon","6 mm plywood motor pylon",pylon,"power","cut-plywood",
         note="Cut profile candidate; plywood grain direction, root fastening and load validation remain open.",color="#b59b70",stock={"thickness_mm":6})
     firewall=Solid.make_cylinder(22,4,Plane(origin=(545,0,220),z_dir=(1,0,0)))
-    for y,z in [(-8,212),(-8,228),(8,212),(8,228)]:
+    motor_properties=sourced_parts["motor"].properties
+    sourced_mount="mount_horizontal_m" in motor_properties and "mount_vertical_m" in motor_properties
+    horizontal=dimension("motor","mount_horizontal_m",.016)*500
+    vertical=dimension("motor","mount_vertical_m",.016)*500
+    holes=[(-horizontal,220),(horizontal,220),(0,220-vertical),(0,220+vertical)] if sourced_mount else [(-8,212),(-8,228),(8,212),(8,228)]
+    for y,z in holes:
         firewall=firewall-Solid.make_cylinder(1.6,6,Plane(origin=(544,y,z),z_dir=(1,0,0)))
+    if sourced_mount:firewall=firewall-Solid.make_cylinder(3,6,Plane(origin=(544,0,220),z_dir=(1,0,0)))
     add("motor-firewall","Motor firewall candidate",firewall,"power","cut-plywood",color="#b59b70",
-        note="Provisional 16 mm square M3 pattern; vendor pattern must be confirmed before cutting.",stock={"thickness_mm":4})
+        note="Manufacturer GT2215-family 19/16 mm cross pattern; 3.2 mm clearance holes and 6 mm center relief are design choices. Confirm delivered variant, screw engagement and loads." if sourced_mount else "Legacy provisional 16 mm square pattern; vendor pattern unconfirmed.",stock={"thickness_mm":4})
     saddle=(Box(82,86,65)-Box(76,80,70)).moved(Location((342,0,75)))-outer
     add("wing-saddle","Wing mounting saddle",saddle,"structure",note="Connects pod to elevated wing; center spar restraint and fastening need validation.",color="#71946b")
     add("battery-tray","Battery tray candidate",Box(105,43,2).moved(Location((p["battery_x_m"]*1000,0,-24))),"power")
@@ -185,7 +198,9 @@ def build(parameters: dict, mission: dict, output_dir: Path) -> dict:
     add("battery","Tattu 1300mAh 3S battery",Box(72,36,22).moved(Location((p["battery_x_m"]*1000,0,-10))),"power","purchase",.122,"#c88149","TAA13003S75X6: manufacturer mass/dimensions. Wire/connector routing still requires clearance checks.")
     add("payload","Mission payload envelope",Box(45,35,30).moved(Location((p["payload_x_m"]*1000,0,35))),"payload","provided",mission["payload_kg"],"#50685e","Payload envelope is an allocation; user hardware not measured.")
     add("esc","Skywalker 20A V2 envelope",Box(45,23,8).moved(Location((420,0,-20))),"power","purchase",.019,"#344a41","Manufacturer dimensions; connector lead envelopes not included.")
-    add("motor","EMAX GT2215 motor envelope",Cylinder(14,32,rotation=(0,90,0)).moved(Location((566,0,220))),"power","purchase",.060,"#59655b","Motor mass and dimensions estimated pending drawing.")
+    add("motor","EMAX GT2215 motor envelope",Cylinder(dimension("motor","diameter_m",.028)*500,
+        dimension("motor","body_length_m",.032)*1000,rotation=(0,90,0)).moved(Location((566,0,220))),
+        "power","purchase",.060,"#59655b","Motor body envelope from the frozen component catalog. Shafts, leads, adapters and installed CG still need detailed checks.")
     add("propeller","8-inch propeller envelope",Box(5,203.2,12).moved(Location((589,0,220))),"power","purchase",.008,"#273d31","Simplified two-blade envelope; not propeller manufacturing geometry.")
     add("receiver","Receiver envelope",Box(30,18,8).moved(Location((330,0,-20))),"controls","purchase",.008,"#28453a")
     for i,(x,y,z) in enumerate([(.4,-p["span_m"]*.3,.12),(.4,p["span_m"]*.3,.12),(.46,-.018,0),(.46,.018,0)]):
@@ -202,21 +217,43 @@ def build(parameters: dict, mission: dict, output_dir: Path) -> dict:
     imported=import_step(str(step_file))
     original_volume=sum(float(s.volume) for s in shapes)
     volume_error=abs(float(imported.volume)-original_volume)/max(original_volume,1)
+    roundtrip=roundtrip_checks(parts,imported)
     max_print=max(max(part["dimensions_m"]) for part in parts if part["process"]=="print")
     metadata={"units":{"cad":"mm","mesh":"m","engineering":"SI"},"parameters":p,"parts":parts,
         "mass_properties":{"mass_kg":total,"cg_m":cg,"parts":[{k:v for k,v in part.items() if k not in ("mesh",)} for part in parts],"allowances":[allowance],"materials":MATERIALS},
         "checks":{"max_print_dimension_m":max_print,"invalid_solids":sum(not part["valid"] for part in parts),
-                  "step_volume_relative_error":volume_error},
+                  "step_volume_relative_error":volume_error,**roundtrip},
         "coverage":{"complete_manufacturing_definition":False,"assembly_verified":False,
-            "open_items":["Control hinge, horn and linkage selection/travel","Fastener and joint details","Battery/hatch positive retention","Vendor motor bolt-pattern confirmation and support loads","Supplier tube and remaining COTS selections","Collision/access/sequence verification","Process calibration and slicing"]}}
+            "open_items":["Control hinge, horn and linkage selection/travel","Fastener and joint details","Battery/hatch positive retention","Delivered motor variant, screw engagement and support loads","Supplier tube and remaining COTS selections","Collision/access/sequence verification","Process calibration and slicing"]}}
     (output_dir/"geometry.json").write_text(json.dumps(metadata,allow_nan=False))
     (output_dir/"design-parameters.json").write_text(json.dumps(p,indent=2))
     return metadata
 
 
+def roundtrip_checks(parts,imported):
+    """Translation/scale/identity errors can preserve volume; check them too."""
+    from build123d import CenterOf
+    expected={part["id"]:part for part in parts}
+    children=list(imported.children)
+    labels=[part.label for part in children]
+    mismatches=len(set(labels)^set(expected))+len(labels)-len(set(labels))
+    center_error=0.;bounds_error=0.
+    for shape in children:
+        if shape.label not in expected:continue
+        part=expected[shape.label]
+        center=[float(v)/1000 for v in shape.center(CenterOf.MASS)]
+        size=[float(v)/1000 for v in shape.bounding_box().size]
+        center_error=max(center_error,max(abs(a-b) for a,b in zip(center,part["centroid_m"])))
+        bounds_error=max(bounds_error,max(abs(a-b) for a,b in zip(size,part["dimensions_m"])))
+    return {"step_part_id_mismatches":mismatches,"step_centroid_max_error_m":center_error,
+        "step_bounds_max_error_m":bounds_error,"step_import_valid":bool(imported.is_valid)}
+
+
 def cad_output(inputs):
     checks=inputs["cad_checks"]
-    admissible=checks["step_volume_relative_error"]<1e-5
+    admissible=(checks["step_volume_relative_error"]<1e-5 and checks.get("step_part_id_mismatches")==0
+        and checks.get("step_centroid_max_error_m",float("inf"))<1e-5
+        and checks.get("step_bounds_max_error_m",float("inf"))<1e-5 and checks.get("step_import_valid") is True)
     return ToolOutput(metrics={
         "max_print_dimension_m":Measurement(value=checks["max_print_dimension_m"],unit="m",admissible=admissible),
         "invalid_solids":Measurement(value=checks["invalid_solids"],unit="1",admissible=admissible),

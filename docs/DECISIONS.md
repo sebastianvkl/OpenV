@@ -220,3 +220,11 @@ A deterministic fixture proposer enables account-free checks with actual CAD and
 ## D036 - Durable Dalus OAuth expiry and refresh
 
 **Decision (live integration, 2026-09-08):** Persist absolute access-token expiry alongside restricted OAuth files. MCP 1.30 reloads tokens without their expiry timestamp and goes directly to interactive authorization after a resource 401. Refresh near-expiry tokens before each short MCP session using the registered issuer's discovered token endpoint. Validate issuer/token origin, do not follow credential-bearing redirects, and preserve a refresh token when the provider omits a replacement. Metadata discovery injects load-balancer cookies; the CLI's refresh-token request must use token authentication without those browser cookies. Real refresh and subsequent authenticated MCP discovery succeeded. Interactive `login` can obtain a new grant when refresh is rejected; ordinary engineering jobs stop with UNKNOWN rather than inventing a connection.
+
+## D037 - Closed proposal wire schema and frozen component inputs
+
+**Decision (live integration, 2026-09-08):** OpenAI strict structured output rejected the redesign's arbitrary parameter dictionary. Use an enumerated list of parameter/value records on the API boundary, reject duplicates, and convert to the existing validated core patch. An SDK transport regression checks every object is closed and the original failure context is preserved. The interrupted run retains its actual mass/stability failures and the schema error; it is not a completed Astra repair.
+
+CAD and regeneration now consume the frozen HardwareSystem component catalog. Updating a supplier reference must not silently change an existing branch's mass, dimensions or mounting geometry. New baselines use EMAX's GT2215 family table (70 g) and dimensional drawing (28.5 mm body, 33.5 mm length, 19/16 mm M3 mounting pattern), with source URLs and a pinned component revision. Legacy baselines keep their estimated properties. Installed variant, screw engagement and support loads still require verification.
+
+STEP round-trip admission checks part identities, centroids, bounding dimensions and imported validity in addition to volume. Translation can preserve volume while corrupting an assembly. The regression deliberately moves a solid and verifies that it cannot support a CAD PASS.

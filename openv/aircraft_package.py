@@ -26,7 +26,7 @@ from openv.cad import build
 root=Path(__file__).resolve().parent
 parameters=json.loads((root/"design-parameters.json").read_text())
 system=json.loads((root/"system.json").read_text())
-build(parameters,system["scenario"],root/"regenerated")
+build(parameters,system["scenario"],root/"regenerated",components=system["components"])
 ''')
     sequence=[
         {'title':'Prepare the wing modules','groups':['wing','structure'],'action':'Inspect printed shells and cut spar stock to the recorded lengths. Dry-fit seams and spar alignment before bonding.'},
@@ -48,8 +48,10 @@ coupons and slicing before manufacturing. No G-code is supplied. Inspect seams,
 wall thickness, supports and orientation before printing. Carbon tube layup and
 joints are unvalidated. Purchased-part meshes are envelopes, not manufacturing
 models. Individual STEP files are supplied for cut-stock and plywood parts;
-stock dimensions are in fabrication-parts.json. Do not cut the provisional
-motor pattern until its vendor drawing and mounting loads are resolved.
+stock dimensions are in fabrication-parts.json. The frozen component catalog
+identifies whether the motor mounting pattern uses a vendor drawing or a legacy
+estimate. Confirm the delivered variant, fastener engagement and mounting loads
+before cutting; a sourced hole pattern alone does not verify the installation.
 
 The BOM includes the separate 55 g installation allowance in the mass model.
 This is an unresolved collection of parts, not a purchasing specification.
