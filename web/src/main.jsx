@@ -558,8 +558,10 @@ function App() {
               }}
               onSelect={(part) => {
                 setSelected(part);
-                setFlightPlaying(false);
-                setAutoRotate(false);
+                if (part) {
+                  setFlightPlaying(false);
+                  setAutoRotate(false);
+                }
               }}
               stepGroups={mode === "Assemble" ? stepInfo?.groups : null}
             />
