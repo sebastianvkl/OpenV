@@ -1019,10 +1019,14 @@ code {
   .intro .primary {
     padding: 11px 13px;
   }
-  .v-trace,
-  .run-note {
+  .v-trace {
     display: none;
   }
+  .run-note { display: block; width: auto; margin-top: 13px; padding: 0; border: 0; }
+  .run-note > * { display: none; }
+  .run-note > .tiny-label, .run-note > p:first-of-type { display: inline; }
+  .run-note > p:first-of-type { margin-left: 8px; font-size: 10px; }
+  .run-note > small { display: block; margin-top: 4px; }
   .canvas-wrap {
     inset: 285px -50px auto;
     height: 365px;
