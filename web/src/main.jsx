@@ -736,7 +736,9 @@ function App() {
                 </p>
               )}
               <small>
-                {isRunning ? (
+                {versionId ? (
+                  "Historical design · evidence from this version"
+                ) : isRunning ? (
                   <>
                     <LoaderCircle size={11} className="spin" />{" "}
                     {human(run.stage)}
