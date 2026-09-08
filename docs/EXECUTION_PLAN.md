@@ -8,12 +8,14 @@ Updated: 2026-09-08. **Implementation approved by the user ("Go ahead"). Target:
 - [x] Core verdict/evidence tests pass; fixture end-to-end repair generated CAD, invalidated evidence and reverified an 8-to-10 mm spar change.
 - [x] Local React/Three.js viewer built and inspected with actual CAD meshes and evidence.
 - [x] Dalus OAuth and typed MCP engineering mapping work end-to-end: requirements, variables/components, delegated interfaces, test cases, evidence references, invalidation and experiments with actual effects.
-- [x] Public HTTPS host and public GitHub repository created; reference example is served. Live credentials and fresh public-run acceptance remain outstanding.
+- [x] Vercel website and public GitHub repository are live; a separate HTTPS Python host runs native CAD/solver jobs. Astra credentials and Dalus OAuth are provisioned.
 - [x] User perturbation API and simulation controls added; longer wings expose real stability and deflection failures. Baseline preservation regression added.
 - [x] Individual cut-part STEP files, stock dimensions, complete modeled-mass BOM accounting and regeneration source added to candidate packaging.
-- [ ] Astra credentials/live model trajectory, complete manufacturing definition, public live-run validation and submission video remain outstanding.
+- [x] Real Astra received measured mass/stability failures and proposed a 70 mm payload shift; external re-verification changed static-margin FAIL to PASS. A later CAD rebuild hit the original ten-minute runtime limit; the interrupted run has no final package.
+- [x] STEP round-trip checks cover identity, position, dimensions, validity and volume; frozen component catalogs preserve historical CAD. Twenty-nine automated tests pass.
+- [ ] Complete live trajectory/package, fresh public mission acceptance, remaining manufacturing definition and submission video are in progress.
 
-The current 37-part CAD export is a candidate with explicitly listed design gaps; it is not the complete manufacturing package milestone.
+The current 39-part Astra CAD export is a candidate with explicitly listed design gaps; it is not the complete manufacturing package milestone.
 
 ## Historical pre-implementation review - 11:04 a.m. Pacific
 
@@ -251,9 +253,9 @@ The supplied event guide sets submission at 5:30 p.m.; retain that interval as c
 - [x] Connect to Dalus exclusively through MCP and verify supported read/write/evidence-reference capabilities.
 - [x] Implement the small canonical snapshot, frozen contracts, and tiny sourced component/reference set with explicit unknowns.
 - [ ] Generate an actual full-reference-system parametric CAD assembly and fabrication exports; retain editable state/source and verify round-trip geometry/units/part identity.
-- [ ] Integrate a validated AeroSandbox flight-analysis path and independent supporting calculations/checks; implement deterministic evaluations and provenance. Cover or explicitly leave open all required verification categories.
+- [x] Integrate a validated AeroSandbox flight-analysis path and independent supporting calculations/checks; implement deterministic evaluations and provenance. Cover or explicitly leave open all required verification categories.
 - [x] Implement versioned patches, transitive invalidation, experiment history, and re-verification.
-- [ ] Connect real Astra mission/design/redesign proposals; mediate all writes and feed actual evidence back.
+- [x] Connect real Astra mission/design/redesign proposals; mediate all writes and feed actual evidence back.
 - [x] Bound iterations/retries/timeouts; retain honest FAIL/UNKNOWN and stop reasons when unresolved.
 - [ ] Build a polished CAD-model-centered mission -> simulate -> fail -> repair experience with actual result overlays and evidence/Dalus trace.
 - [x] Add the reference-inspired Explore/Simulate/Assemble views on the same CAD scene: assembled/interior/exploded interaction, selectable components, and a short guided assembly sequence with explicit verification status.
@@ -262,7 +264,7 @@ The supplied event guide sets submission at 5:30 p.m.; retain that interval as c
 - [ ] Export the system BOM, fabrication details, concise assembly sequence/check status, and evidence manifest tied to the same design as the CAD.
 - [x] Test good/bad cases, missing/invalid evidence, protected thresholds/status writes, transitive invalidation, and old/partial-result exclusion.
 - [ ] Record one real successful repair trajectory, label all fixtures/replays, and prepare the one-minute submission video and repository materials.
-- [ ] Document setup, tool/backend configuration, adding a domain/verifier, known capability limits, and an offline reproducible example; prove the core with a minimal non-aircraft regression.
+- [x] Document setup, tool/backend configuration, adding a domain/verifier, known capability limits, and an offline reproducible example; prove the core with a minimal non-aircraft regression.
 
 A fixture proposer cannot satisfy real Astra acceptance. A mocked/local backend cannot satisfy Dalus MCP acceptance. A schematic mesh cannot satisfy CAD/manufacturing acceptance; a few component checks cannot satisfy aircraft simulation acceptance. If a required path is incomplete, report it without substituting a weaker claim. Real recorded runs are a labeled fallback where available.
 

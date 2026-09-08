@@ -435,7 +435,12 @@ function App() {
         setError((previous) =>
           /Failed to fetch|NetworkError/.test(previous) ? "" : previous,
         );
-        if (!runId && r.length) setRunId(r[0].id);
+        if (!runId && r.length) {
+          const published = r.find((item) => item.status === "complete" && item.current_design_id && item.provider === "Astra")
+            || r.find((item) => item.status === "complete" && item.current_design_id)
+            || r[0];
+          setRunId(published.id);
+        }
       } catch (e) {
         if (!cancelled) setError(e.message);
       }

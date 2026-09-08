@@ -12,13 +12,13 @@ Updated September 8, 2026. This is implementation evidence, not engineering rele
   margin and spar deflection fail. Dalus commit read-back is evaluated. The
   package has 57 hash-checked entries, including individual cut-part STEP files,
   printable-part STLs, stock dimensions, BOM, evidence and regeneration source.
-- 26 automated tests pass, including a second minimal domain through the shared
+- 29 automated tests pass, including a second minimal domain through the shared
   runtime, forbidden changes, stale/conflicting evidence, branch baselines and
   package mass accounting.
 
 ## Still required for acceptance
 
-Astra credentials are provisioned and the API has returned actual proposals, including a geometry rejection and a corrected proposal. The accepted proposal is continuing after a Dalus token-expiry fix. A complete Astra repair trajectory and a fresh public plain-English mission still need validation. Do not describe fixtures or explicit user experiments as Astra runs.
+Astra credentials are provisioned and the API has returned actual proposals, including a geometry rejection and a corrected proposal. The accepted proposal generated a 39-part candidate through actual Dalus MCP and engineering tools. A public payload amendment produced mass/static-margin failures; Astra moved the payload 70 mm aft and the static-margin verifier returned PASS (0.319 to 0.191). The next rebuild exceeded the original runtime cap, so that run remains interrupted without a final package. A full completed repair package and fresh public plain-English mission are being validated. Do not describe fixtures or explicit user experiments as Astra runs.
 
 CAD/fabrication outputs remain a candidate: hardware selections, joints,
 retention, controls/hinges/linkages and manufacturing details remain open. The
