@@ -1432,6 +1432,15 @@ function App() {
                 <small>
                   {exp.invalidated_evidence.length} evidence records invalidated
                 </small>
+                {Object.entries(exp.actual_effect || {})
+                  .filter(([, effect]) => effect.before !== effect.after || effect.after === "FAIL")
+                  .map(([id, effect]) => (
+                    <div className="experiment-outcome" key={id}>
+                      <b>{human(id)}</b>
+                      <span><Badge status={effect.before} /> → <Badge status={effect.after} /></span>
+                      <p>{effect.reasons?.[0]}</p>
+                    </div>
+                  ))}
                 <details>
                   <summary>Actual effect</summary>
                   <pre>{JSON.stringify(exp.actual_effect, null, 2)}</pre>

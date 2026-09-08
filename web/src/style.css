@@ -898,9 +898,6 @@ code {
     left: 65px;
     width: 320px;
   }
-  h1 {
-    font-size: 57px;
-  }
   .inspector {
     right: 65px;
     width: 280px;
@@ -1185,3 +1182,12 @@ code {
   border-color: #d9988d;
   background: #fff2e9;
 }
+.experiment-outcome {
+  border: 1px solid #d8ddd5;
+  padding: 12px;
+  margin: 14px 0;
+  display: grid;
+  gap: 8px;
+}
+.experiment-outcome > span { display: flex; align-items: center; gap: 8px; }
+.experiment-outcome p { margin: 0; font-size: 12px; }
