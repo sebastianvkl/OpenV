@@ -310,4 +310,4 @@ The user approved implementation with "Go ahead". Proceed through P0 autonomousl
 
 - [x] Add procedural valley/coast/ridge scenery, airfield, trees, water and distant hills around the real CAD aircraft.
 - [x] Add prescribed-route animation, chase/wing/survey cameras, play/pause, restart and playback rate; keep physical flight UNKNOWN.
-- [ ] Verify motion, pause, case switching and mobile layout, then publish the updated website.
+- [x] Verify moving frames, identical paused frames, failure-preserving case switching, camera/scenery selection, reduced-motion startup and mobile layout; publish the updated website.

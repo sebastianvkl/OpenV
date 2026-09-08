@@ -91,3 +91,18 @@ The UI switches instantly to an existing case only when parameters, components,
 contracts and all other scenario inputs match. Otherwise presets remain drafts
 and use the existing mission-amendment pipeline. A browser check exercises the
 transition into a queued job without exposing stale scene results as recomputed.
+
+## Animated 3D world
+
+[Open the animated flight view](https://openv-kohl.vercel.app/?run=run-11489fb9d56e&view=flight).
+Simulation now opens in Flight by default. The exact aircraft CAD follows a
+prescribed circuit through procedural valley, coastal or mountain scenery, with
+forest, water, a fictional airfield and a spinning propeller. Camera choices are
+Chase, Wing and Survey. Playback can be paused, restarted or set to 0.5×/1×/3×;
+reduced-motion preferences start playback paused.
+
+This is presentation, not flight-dynamics evidence. The circuit radius is 90 m
+and scenic height is 35 m; neither is a verified mission requirement. Motion uses
+the recorded airspeed. Changing scenery does not change the atmospheric scenario
+or evidence. Failed modeled checks remain visible even while the animation plays.
+The existing VLM and structural result views remain independently inspectable.
