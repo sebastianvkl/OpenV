@@ -12,7 +12,9 @@ Published examples identify their proposer. Live Astra requires server credentia
 
 The [fresh public mission](https://openv-kohl.vercel.app/?run=run-38f998e18d41) ran actual Astra → Dalus MCP → CAD → verification → failure → Astra repair → re-verification. Excessive spar deflection prompted an 8-to-10 mm diameter change. The external calculation changed from 46.3 to 22.2 mm against a 32.5 mm limit. Five dependent evidence records were invalidated; unchanged electrical evidence was reused. The final ten modeled checks passed; eight requirements remained UNKNOWN.
 
-The [current sourced-component example](https://openv-kohl.vercel.app/?run=run-626e87d14855) has 43 CAD parts and 1.1443 kg modeled mass, uses the updated manufacturer motor dimensions/mass, and passes the stronger STEP identity/position/dimension checks. It has ten PASS and seven UNKNOWN results. It needed no redesign; the earlier recorded run demonstrates that loop. Its [candidate package](https://openv-kohl.vercel.app/artifacts/run-626e87d14855/candidate-package.zip) includes STEP, printable-part STLs, cut-stock definitions, BOM, assembly sequence, source and evidence; all 61 manifest hashes were checked.
+The [current installation example](https://openv-kohl.vercel.app/?run=run-dcef3705d89d) contains 45 CAD parts and 1.1494 kg modeled mass. Independent solid checks found the battery intersecting both tail-servo mounts and obstructing insertion. Astra moved it 3.6 mm forward; seven dependent evidence records were invalidated, and re-verification reached 16 PASS / 0 FAIL / 8 UNKNOWN. Both designs update the same persistent Dalus model, which retains the earlier test history. The [candidate package](https://openv-kohl.vercel.app/artifacts/run-dcef3705d89d/candidate-package.zip) includes STEP/STL, cut stock, sourced BOM, installation checks, connection schedule, assembly instructions and versioned evidence. All 68 manifest hashes were checked.
+
+The package is a manufacturing **candidate**, not a flight release. Unproven joints/retention, wiring and control installation, current demand, endurance and physical flight remain explicit unknowns. New runs also produce bounded point-mass flight diagnostics for power loss, banking and crosswind. The 3D viewer plays solver samples; ideal attitude tracking and prescribed thrust are assumptions, not evidence of real flight.
 
 ## Run locally
 
@@ -31,7 +33,7 @@ cd ..
 uvicorn openv.server:app --host 127.0.0.1 --port 8000
 ```
 
-Open http://127.0.0.1:8000. The offline example runs actual CAD generation and engineering calculations with a **labeled deterministic fixture proposer**. It does not call Astra or decompose arbitrary mission text. Its reference mission is 150 g payload, 20 minutes and 12 m/s cruise. The first example exposes excessive spar deflection, changes the spar diameter, invalidates dependent evidence and verifies again.
+Open http://127.0.0.1:8000. The offline example runs actual CAD generation and engineering calculations with a **labeled deterministic fixture proposer**. It does not call Astra or decompose arbitrary mission text. Its reference mission is 150 g payload, 20 minutes and 12 m/s cruise. The fixture exposes installation interference and unavailable spar stock, changes placement and tube section, invalidates dependent evidence and verifies again.
 
 For Astra, copy `.env.example` to `.env`, set `OPENAI_API_KEY`, then:
 

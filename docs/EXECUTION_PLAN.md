@@ -337,4 +337,10 @@ Extension checkpoint: 37 regression tests pass, including overlap versus contact
 - [x] Update the existing model and stable engineering element IDs across runs; preserve prior test runs and snapshots.
 - [x] Invalidate current statuses before updating inputs; reject missing mappings and concurrent writers; paginate MCP read-back and retry bounded consistency delays.
 - [x] Regression-test repeated updates, identity/history retention, invalidation order, mapping loss and writer exclusion.
-- [ ] Migrate the deployed reference mapping and verify a live update uses the same model ID.
+- [x] Migrate the deployed reference mapping and verify a live update uses the same model ID: run-dcef3705d89d reused 99ee8003-6171-47ce-903d-ad279e1b8f25 and reached CAD generation after strict MCP read-back.
+
+Flight response checkpoint: four regression tests cover level-flight/ballistic references, power-loss descent, crosswind advection, terminal model bounds and real geometry provenance. Viewer integration and live acceptance are in progress.
+
+Live installation acceptance: `run-dcef3705d89d` used actual Astra and the existing Dalus model. First CAD found 10.45 mm³ battery intersection with each tail-servo mount and 130.625 mm³ insertion obstruction at each mount. Astra changed battery x from 0.4116 m to 0.408 m; seven evidence records became stale. Re-verification reached 16 PASS / 0 FAIL / 8 UNKNOWN. The model retained 64 test-history rows, and all 68 candidate-package hashes matched. The 45-part candidate has modeled mass 1.149381 kg and 6.805 mm rigid propeller-envelope clearance; full manufacturing and physical flight release remain open.
+
+Animated-response browser acceptance: power-off playback shows computed height/airspeed and zero commanded thrust after 5 s; banking/crosswind switch correctly, pause freezes telemetry, source output downloads, and desktop/mobile layouts have no overflow or JavaScript errors. The duplicate local fixture was explicitly stopped during its third CAD build after validating the earlier trajectory artifacts; it is marked INTERRUPTED/UNKNOWN, not a completed run. Final response/package acceptance uses a fresh verification of the repaired live aircraft. A regression also ensures the public Dalus commit indicator returns to defined/pending during redesign rather than retaining the previous evaluated marker.

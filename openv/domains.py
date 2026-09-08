@@ -27,7 +27,11 @@ class AircraftDomain:
         aero = next((e for e in evidence if e.method == "aero"), None)
         if aero is None:
             return None
-        write_json(folder / "simulation.json", flow_field(context, aero))
+        from openv.flight_response import flight_response
+        write_json(folder / "flight-response.json", flight_response(context, aero))
+        flow=flow_field(context, aero)
+        flow["flight_response_file"]=f"{folder.name}/flight-response.json"
+        write_json(folder / "simulation.json", flow)
         return f"{folder.name}/simulation.json"
 
     def package(self,folder,hardware,design,artifacts):

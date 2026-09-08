@@ -583,11 +583,22 @@ function Setting({ environment }) {
     );
   return null;
 }
-function SpinningPropeller({ part, playing, rate, children }) {
-  const rotor = useRef();
+function SpinningPropeller({ part, playing, rate, trajectory, children }) {
+  const rotor = useRef(),
+    elapsed = useRef(0);
   const center = point(part.centroid_m);
+  useEffect(() => {
+    elapsed.current = 0;
+  }, [trajectory]);
   useFrame((_, delta) => {
-    if (playing) rotor.current.rotation.z += Math.min(delta, 0.1) * 40 * rate;
+    if (playing) {
+      elapsed.current += Math.min(delta, trajectory ? 1 : 0.1) * rate;
+      if (
+        (!trajectory || elapsed.current < trajectory.duration_s) &&
+        !(trajectory?.id === "power-off" && elapsed.current >= 5)
+      )
+        rotor.current.rotation.z += Math.min(delta, 0.1) * 40 * rate;
+    }
   });
   return (
     <group position={center}>
@@ -618,6 +629,8 @@ export default function Scene({
   flightWorld,
   flightRate,
   flightReset,
+  trajectory,
+  onFlightSample,
 }) {
   const controls = useRef();
   const collided = new Set(
@@ -692,7 +705,7 @@ export default function Scene({
         </Environment>
         {flight ? (
           <FlightWorld
-            {...{ aero }}
+            {...{ aero, trajectory, onFlightSample }}
             playing={flightPlaying}
             cameraMode={flightCamera}
             world={flightWorld}
@@ -704,6 +717,7 @@ export default function Scene({
                 <SpinningPropeller
                   key={`${part.id}:${flightReset}`}
                   part={part}
+                  trajectory={trajectory}
                   playing={flightPlaying}
                   rate={flightRate}
                 >

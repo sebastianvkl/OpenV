@@ -3,7 +3,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { Line, Sky } from "@react-three/drei";
 import * as THREE from "three";
 
-// Presentation only: a prescribed cinematic circuit, never a flight-dynamics solver.
+// Playback of version-bound solver samples; historical runs retain a labeled cinematic circuit.
 const RADIUS = 90;
 const HEIGHT = 35;
 const palettes = {
@@ -43,7 +43,7 @@ function heightAt(x, z, world) {
     (world === "ridge" ? hills * 0.65 : 0)
   );
 }
-function Terrain({ world }) {
+function Terrain({ world, course }) {
   const theme = palettes[world];
   const mesh = useMemo(() => {
     const g = new THREE.PlaneGeometry(2200, 2200, 160, 160);
@@ -59,6 +59,13 @@ function Terrain({ world }) {
         const lake = ((x + 265) / 95) ** 2 + ((z + 100) / 125) ** 2;
         if (lake < 1.15) y = Math.min(y, 1 + Math.max(0, lake - 0.7) * 32);
       }
+      if (course) {
+        const blend = Math.min(
+          1,
+          Math.max(0, Math.abs(x) - 160, -z - 100, z - 500) / 140,
+        );
+        y = Math.min(y, 5.4) + Math.max(0, y - 5.4) * blend;
+      }
       position.setY(i, y);
       const tint = new THREE.Color(theme.ground).lerp(
         new THREE.Color("#c9c5b1"),
@@ -72,7 +79,7 @@ function Terrain({ world }) {
     g.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
     g.computeVertexNormals();
     return g;
-  }, [world]);
+  }, [world, course]);
   useEffect(() => () => mesh.dispose(), [mesh]);
   const trees = useRef(),
     trunks = useRef();
@@ -84,9 +91,17 @@ function Terrain({ world }) {
         z = (random(i * 7 + 2) - 0.5) * 1100;
       // Keep the small airfield and the coastal water clear of scenery trees.
       if (Math.abs(x) < 30 && Math.abs(z) < 135) x += 65;
+      if (course && Math.abs(x) < 180) x += x < 0 ? -190 : 190;
       if (world === "coast" && x > 160) x = -Math.abs(x);
       const h = 5 + random(i * 7 + 3) * 10,
-        ground = heightAt(x, z, world);
+        ground = course
+          ? Math.min(5.4, heightAt(x, z, world)) +
+            Math.max(0, heightAt(x, z, world) - 5.4) *
+              Math.min(
+                1,
+                Math.max(0, Math.abs(x) - 160, -z - 100, z - 500) / 140,
+              )
+          : heightAt(x, z, world);
       dummy.position.set(x, ground + h * 0.64, z);
       dummy.scale.set(h * 0.26, h, h * 0.26);
       dummy.rotation.set(0, random(i) * 6.28, 0);
@@ -102,7 +117,7 @@ function Terrain({ world }) {
     trees.current.instanceMatrix.needsUpdate = true;
     trees.current.instanceColor.needsUpdate = true;
     trunks.current.instanceMatrix.needsUpdate = true;
-  }, [world]);
+  }, [world, course]);
   return (
     <group>
       <mesh geometry={mesh} receiveShadow>
@@ -240,31 +255,65 @@ export default function FlightWorld({
   world,
   rate,
   resetKey,
+  trajectory,
+  onFlightSample,
 }) {
   const aircraft = useRef(),
-    elapsed = useRef(0);
+    elapsed = useRef(0),
+    body = useRef(),
+    reported = useRef(-1);
   const { camera } = useThree();
   const speed = Number.isFinite(aero?.velocity_mps) ? aero.velocity_mps : 0;
   const trail = useMemo(
     () =>
-      Array.from({ length: 145 }, (_, i) => {
-        const a = (i / 144) * Math.PI * 2;
-        return [RADIUS * Math.sin(a), HEIGHT, RADIUS * Math.cos(a)];
-      }),
-    [],
+      trajectory
+        ? trajectory.samples.map((s) => [s.east_m, s.height_m + 5.4, s.north_m])
+        : Array.from({ length: 145 }, (_, i) => {
+            const a = (i / 144) * Math.PI * 2;
+            return [RADIUS * Math.sin(a), HEIGHT, RADIUS * Math.cos(a)];
+          }),
+    [trajectory],
   );
   useEffect(() => {
     elapsed.current = 0;
-  }, [resetKey, speed]);
+    reported.current = -1;
+  }, [resetKey, speed, trajectory]);
   useFrame((_, delta) => {
-    if (playing) elapsed.current += Math.min(delta, 0.1) * rate;
+    if (playing)
+      elapsed.current += Math.min(delta, trajectory ? 1 : 0.1) * rate;
     const angle = (elapsed.current * speed) / RADIUS;
-    const position = new THREE.Vector3(
+    let position = new THREE.Vector3(
       RADIUS * Math.sin(angle),
       HEIGHT,
       RADIUS * Math.cos(angle),
     );
-    const yaw = Math.PI / 2 + angle;
+    let yaw = Math.PI / 2 + angle;
+    if (trajectory) {
+      elapsed.current = Math.min(elapsed.current, trajectory.duration_s);
+      const rows = trajectory.samples,
+        t = elapsed.current;
+      let j = Math.min(rows.length - 1, Math.floor(t * 10));
+      while (j + 1 < rows.length && rows[j + 1].time_s <= t) j++;
+      const a = rows[j],
+        b = rows[Math.min(j + 1, rows.length - 1)];
+      const f =
+        b.time_s > a.time_s ? (t - a.time_s) / (b.time_s - a.time_s) : 0;
+      const sample = Object.fromEntries(
+        Object.keys(a).map((k) => [k, a[k] + (b[k] - a[k]) * f]),
+      );
+      position.set(sample.east_m, sample.height_m + 5.4, sample.north_m);
+      yaw = sample.heading_rad;
+      body.current.rotation.set(-sample.pitch_rad, 0, -sample.bank_rad);
+      if (
+        (reported.current !== "done" &&
+          Math.floor(t * 5) !== reported.current) ||
+        (t === trajectory.duration_s && reported.current !== "done")
+      ) {
+        reported.current =
+          t === trajectory.duration_s ? "done" : Math.floor(t * 5);
+        onFlightSample?.(sample);
+      }
+    }
     aircraft.current.position.copy(position);
     aircraft.current.rotation.set(0, yaw, 0);
     const offset = new THREE.Vector3(
@@ -276,7 +325,7 @@ export default function FlightWorld({
     );
     offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
     const desired = position.clone().add(offset);
-    // Follow the prescribed path. There is no feedback controller or dynamics integration here.
+    // Follow captured samples; the browser never integrates or creates engineering evidence.
     if (cameraMode === "survey") {
       camera.position.copy(
         position
@@ -309,7 +358,7 @@ export default function FlightWorld({
       />
       <hemisphereLight args={["#f9f3df", "#6f7e55", 0.8]} />
       <directionalLight position={[400, 600, -300]} intensity={2} />
-      <Terrain world={world} />
+      <Terrain world={world} course={!!trajectory} />
       <Line
         points={trail}
         color="#e4d6a3"
@@ -322,6 +371,7 @@ export default function FlightWorld({
       />
       <group ref={aircraft}>
         <group
+          ref={body}
           rotation={[
             (-(aero?.alpha_deg || 0) * Math.PI) / 180,
             0,

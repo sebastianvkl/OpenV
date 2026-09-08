@@ -225,10 +225,21 @@ function App() {
   const [labels, setLabels] = useState(true);
   const [wiring, setWiring] = useState(true);
   const [flow, setFlow] = useState(null);
+  const [response, setResponse] = useState(null);
+  const [responseCase, setResponseCase] = useState("cruise");
+  const [flightSample, setFlightSample] = useState(null);
   useEffect(() => {
     setFlow(null);
+    setResponse(null);
+    setFlightSample(null);
     if (!runId || !selectedVersionForFlow()) return;
     let cancelled = false;
+    api(url(runId, `${selectedVersionForFlow()}/flight-response.json`))
+      .then((value) => {
+        if (!cancelled && value.design_id === selectedVersionForFlow())
+          setResponse(value);
+      })
+      .catch(() => {});
     api(url(runId, `${selectedVersionForFlow()}/simulation.json`))
       .then((value) => {
         if (!cancelled && value.design_id === selectedVersionForFlow())
@@ -408,6 +419,14 @@ function App() {
       evidence.find((e) => e.method === "aero")?.output_hash
       ? flow
       : null;
+  const validResponse =
+    response?.design_id === selectedVersion &&
+    response?.trim_output_hash ===
+      evidence.find((e) => e.method === "aero")?.output_hash &&
+    response?.status === "COMPUTED"
+      ? response
+      : null;
+  const trajectory = validResponse?.cases?.find((c) => c.id === responseCase);
   const stepInfo = assembly?.steps[step];
   const installation = evidence.find((e) => e.method === "installation")?.output
     .raw;
@@ -558,7 +577,9 @@ function App() {
                 flightCamera,
                 flightWorld,
                 flightRate,
-                flightReset: `${runId}:${selectedVersion}:${flightReset}`,
+                flightReset: `${runId}:${selectedVersion}:${flightReset}:${responseCase}`,
+                trajectory,
+                onFlightSample: setFlightSample,
               }}
               onSelect={(part) => {
                 setSelected(part);
@@ -670,11 +691,17 @@ function App() {
           <>
             <div className="flight-world-note">
               <span className={flightPlaying ? "live-dot" : "badge-dot"} />
-              {flightPlaying ? "ANIMATED FLIGHT" : "PAUSED"}
+              {trajectory && flightSample?.time_s >= trajectory.duration_s
+                ? "RESPONSE COMPLETE"
+                : flightPlaying
+                  ? "ANIMATED FLIGHT"
+                  : "PAUSED"}
               <span>
                 {counts.FAIL
-                  ? `${counts.FAIL} modeled checks FAIL · illustrative motion`
-                  : "Prescribed route · physical flight UNKNOWN"}
+                  ? `${counts.FAIL} modeled checks FAIL · physical flight UNKNOWN`
+                  : trajectory
+                    ? `${trajectory.name} · computed point-mass response`
+                    : "Prescribed route · physical flight UNKNOWN"}
               </span>
             </div>
             <div className="scene-controls flight-controls">
@@ -913,6 +940,26 @@ function App() {
                   </button>
                 ))}
               </div>
+              {environment === "flight" && validResponse && (
+                <label className="recorded-cases">
+                  COMPUTED RESPONSE / IDEAL ATTITUDE
+                  <select
+                    aria-label="Flight response"
+                    value={responseCase}
+                    onChange={(e) => {
+                      setResponseCase(e.target.value);
+                      setFlightSample(null);
+                      setFlightPlaying(true);
+                    }}
+                  >
+                    {validResponse.cases.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               {environment === "flight" && (
                 <label className="recorded-cases">
                   SCENERY / PRESENTATION ONLY
@@ -1089,16 +1136,93 @@ function App() {
                   </>
                 ) : (
                   <>
-                    <p>
-                      Animated circuit at {number(aero?.velocity_mps, 0)} m/s
-                      recorded airspeed · {flightRate}× playback.
-                    </p>
-                    <small>
-                      Prescribed 90 m radius route, 35 m scenic height. Terrain,
-                      bank and propeller motion are illustrative. Recorded trim
-                      checks do not validate this trajectory; physical flight
-                      remains UNKNOWN.
-                    </small>
+                    {trajectory ? (
+                      <>
+                        <p>
+                          AeroSandbox forces + 3D point-mass equations · SciPy
+                          integration.
+                        </p>
+                        <div
+                          className="part-specs"
+                          aria-label="Computed flight telemetry"
+                        >
+                          <div>
+                            <span>Playback</span>
+                            <b>
+                              {number(flightSample?.time_s ?? 0, 1)} /{" "}
+                              {number(trajectory.duration_s, 1)} s
+                            </b>
+                          </div>
+                          <div>
+                            <span>Height AGL · flat plane</span>
+                            <b>{number(flightSample?.height_m ?? 60, 1)} m</b>
+                          </div>
+                          <div>
+                            <span>Airspeed</span>
+                            <b>
+                              {number(
+                                flightSample?.airspeed_mps ??
+                                  aero?.velocity_mps,
+                                1,
+                              )}{" "}
+                              m/s
+                            </b>
+                          </div>
+                          <div>
+                            <span>Prescribed thrust</span>
+                            <b>
+                              {number(
+                                flightSample?.thrust_n ??
+                                  trajectory.samples[0].thrust_n,
+                                2,
+                              )}{" "}
+                              N
+                            </b>
+                          </div>
+                        </div>
+                        <p>
+                          Computed height change:{" "}
+                          {number(trajectory.height_change_m, 1)} m. Stops:{" "}
+                          {trajectory.stop_reason.replaceAll("_", " ")}.
+                        </p>
+                        <small>
+                          Ideal attitude tracking and prescribed thrust.
+                          Constant-density force table; no controller, stall or
+                          six-axis rigid-body dynamics. Physical flight remains
+                          UNKNOWN. Scenery and propeller RPM are illustrative.
+                        </small>
+                        <details>
+                          <summary>Model assumptions & source</summary>
+                          {validResponse.assumptions.map((a) => (
+                            <p className="tiny" key={a}>
+                              {a}
+                            </p>
+                          ))}
+                          <a
+                            href={url(
+                              runId,
+                              `${selectedVersion}/flight-response.json`,
+                            )}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Versioned solver output ↗
+                          </a>
+                        </details>
+                      </>
+                    ) : (
+                      <>
+                        <p>
+                          Animated circuit at {number(aero?.velocity_mps, 0)}{" "}
+                          m/s recorded airspeed · {flightRate}× playback.
+                        </p>
+                        <small>
+                          Prescribed 90 m radius route, 35 m scenic height.
+                          Terrain, bank and propeller motion are illustrative.
+                          Physical flight remains UNKNOWN. {response?.reason}
+                        </small>
+                      </>
+                    )}
                   </>
                 )}
               </div>
@@ -1408,10 +1532,14 @@ function App() {
           <span>
             {mode === "Simulate"
               ? environment === "flight"
-                ? "ILLUSTRATIVE FLIGHT / RECORDED ANALYSIS"
+                ? trajectory
+                  ? "COMPUTED POINT-MASS RESPONSE / PHYSICAL FLIGHT UNKNOWN"
+                  : "ILLUSTRATIVE FLIGHT / RECORDED ANALYSIS"
                 : environment === "structure"
                   ? "SPAR BENDING / IDEAL ROOT RESTRAINT"
-                  : "COMPUTED VLM / UNBOUNDED INVISCID FLOW"
+                  : environment === "installation"
+                    ? "SOLID INTERSECTION / DECLARED INSERTION SEQUENCE"
+                    : "COMPUTED VLM / UNBOUNDED INVISCID FLOW"
               : mode === "Assemble"
                 ? "ASSEMBLY SEQUENCE / VERIFICATION OPEN"
                 : "PARAMETRIC CAD / CANONICAL ENGINEERING STATE"}
@@ -1437,7 +1565,7 @@ function App() {
               key={v.id}
               className={selectedVersion === v.id ? "active" : ""}
               onClick={() => {
-                setVersionId(i === run.versions.length - 1 ? "" : v.id);
+                setVersionId(v.id === run.current_design_id ? "" : v.id);
                 setSelected(null);
               }}
             >

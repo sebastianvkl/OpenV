@@ -57,3 +57,22 @@ def test_non_aircraft_public_pipeline_fail_change_invalidate_pass(tmp_path):
     assert experiment['actual_effect']['fit']['before']=='FAIL'
     assert experiment['actual_effect']['fit']['after']=='PASS'
     assert (tmp_path/'bracket'/'candidate-package.zip').exists()
+
+
+def test_candidate_build_publishes_current_remote_commit_state(tmp_path):
+    import json
+    class Store:
+        def __init__(self):self.commit='incomplete'
+        def public_ref(self):return {'model_id':'same-system','commit':self.commit}
+        def create_system(self,*args):self.commit='defined';return self.public_ref()
+        def record_verification(self,*args):self.commit='evaluated';return self.public_ref()
+        def record_experiment(self,*args):self.commit='defined'
+        def complete_experiment(self,*args):pass
+    class Domain(BracketDomain):
+        def build(self,design,scenario,directory):
+            state=json.loads((directory.parent/'run.json').read_text())
+            assert state['dalus']['commit']=='defined'
+            return super().build(design,scenario,directory)
+    state=Pipeline(tmp_path/'bracket',BracketEngineer(),store=Store(),domain=Domain()).run('A bracket for a 10 mm opening')
+    assert state['gate']=='PASS'
+    assert state['dalus']['commit']=='evaluated'

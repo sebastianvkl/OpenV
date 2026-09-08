@@ -173,6 +173,7 @@ class Pipeline:
             self.event("invalidated","Candidate committed; dependent evidence is stale",experiment=exp.model_dump())
             if self.store:
                 self.store.record_experiment(hardware,design,candidate,exp,self.state["evaluations"])
+                self.state["dalus"]=self.store.public_ref()
             geometry=self.geometry(candidate,hardware)
             new_context=self.context(hardware,candidate,geometry)
             new_evidence,new_evaluations=self.verify(hardware,candidate,new_context,evidence)

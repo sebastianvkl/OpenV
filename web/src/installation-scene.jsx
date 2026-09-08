@@ -1,5 +1,5 @@
 import React from "react";
-import { Html } from "@react-three/drei";
+import { Html, Edges } from "@react-three/drei";
 const point = ([x, y, z]) => [y, z, 0.45 - x];
 export function InstallationScene({ data, geometry }) {
   if (!data?.available) return null;
@@ -20,7 +20,13 @@ export function InstallationScene({ data, geometry }) {
                 part.dimensions_m[0] + 0.002,
               ]}
             />
-            <meshBasicMaterial color="#fa896e" wireframe depthTest={false} />
+            <meshBasicMaterial
+              color="#fa896e"
+              transparent
+              opacity={0.04}
+              depthWrite={false}
+            />
+            <Edges color="#fa896e" depthTest={false} />
           </mesh>
         ))}
       {data.insertions.map((row) => {
@@ -34,9 +40,13 @@ export function InstallationScene({ data, geometry }) {
               <boxGeometry args={[size[1], size[2], size[0]]} />
               <meshBasicMaterial
                 color={row.collisions.length ? "#fa896e" : "#8eb7c6"}
-                wireframe
                 transparent
-                opacity={0.65}
+                opacity={0.025}
+                depthWrite={false}
+                depthTest={false}
+              />
+              <Edges
+                color={row.collisions.length ? "#fa896e" : "#8eb7c6"}
                 depthTest={false}
               />
             </mesh>
