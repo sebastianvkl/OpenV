@@ -1,8 +1,7 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { ContactShadows, Html, Line, OrbitControls } from "@react-three/drei";
-import * as THREE from "three";
+import Scene from "./scene.jsx";
+
 import {
   ArrowDown,
   ArrowLeft,
@@ -59,221 +58,6 @@ function Badge({ status, children }) {
       )}
       {children || status}
     </span>
-  );
-}
-
-function Part({ part, explode, inside, selected, onSelect, stepGroups }) {
-  const ref = useRef();
-  const geometry = useMemo(() => {
-    const g = new THREE.BufferGeometry();
-    const a = part.mesh.positions;
-    const p = [];
-    for (let i = 0; i < a.length; i += 3) p.push(...point(a.slice(i, i + 3)));
-    g.setAttribute("position", new THREE.Float32BufferAttribute(p, 3));
-    g.setIndex(part.mesh.indices);
-    g.computeVertexNormals();
-    return g;
-  }, [part]);
-  useEffect(() => () => geometry.dispose(), [geometry]);
-  const side = Math.sign(part.centroid_m[1]);
-  const offset = {
-    wing: [side * 0.25, 0.08, 0],
-    tail: [side * 0.1, 0.17, -0.12],
-    fuselage: [0, -0.08, 0],
-    structure: [0, 0.08, 0],
-    power: [0.16, 0.24, 0.02],
-    payload: [-0.18, 0.15, 0.08],
-    controls: [side * 0.16, 0.25, 0],
-  }[part.group] || [0, 0, 0];
-  useFrame((_, delta) => {
-    if (ref.current)
-      ref.current.position.lerp(
-        new THREE.Vector3(...offset.map((v) => v * explode)),
-        1 - Math.exp(-8 * delta),
-      );
-  });
-  const faded = inside && ["wing", "fuselage", "tail"].includes(part.group);
-  const inactive = stepGroups && !stepGroups.includes(part.group);
-  return (
-    <mesh
-      ref={ref}
-      geometry={geometry}
-      castShadow
-      receiveShadow
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect(part);
-      }}
-    >
-      <meshStandardMaterial
-        color={selected === part.id ? "#ca8150" : part.color}
-        roughness={0.68}
-        metalness={part.process === "cut-carbon" ? 0.18 : 0.04}
-        transparent={faded || inactive}
-        opacity={inactive ? 0.12 : faded ? 0.18 : 1}
-        depthWrite={!faded && !inactive}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
-  );
-}
-
-function Camera({ preset, controls }) {
-  const { camera } = useThree();
-  useEffect(() => {
-    const positions = {
-      perspective: [1.85, 1.38, 2.28],
-      top: [0, 3.1, 0.001],
-      side: [3.1, 0.22, 0],
-    };
-    camera.position.set(...positions[preset]);
-    camera.lookAt(0, 0.08, 0);
-    controls.current?.update();
-  }, [preset]);
-  return null;
-}
-
-function AnalysisOverlay({ evidence, parameters, evaluations }) {
-  const aero = evidence.find((e) => e.method === "aero")?.output?.raw;
-  const structure = evidence.find((e) => e.method === "structure")?.output?.raw;
-  const structureFailed = evaluations.some(
-    (e) =>
-      ["deflection", "spar"].includes(e.requirement_id) && e.status === "FAIL",
-  );
-  const stabilityFailed = evaluations.some(
-    (e) => e.requirement_id.startsWith("stability-") && e.status === "FAIL",
-  );
-  if (!aero?.cg_m) return null;
-  const cg = point(aero.cg_m);
-  const np = point([aero.x_np, 0, aero.cg_m[2]]);
-  return (
-    <group>
-      <mesh position={cg}>
-        <sphereGeometry args={[0.009, 20, 20]} />
-        <meshBasicMaterial color="#d89050" depthTest={false} />
-      </mesh>
-      <Html position={[cg[0], cg[1] + 0.07, cg[2]]} center>
-        <span className={`scene-label ${stabilityFailed ? "failed" : "amber"}`}>
-          {stabilityFailed ? "STATIC MARGIN FAIL" : "CENTER OF GRAVITY"}
-        </span>
-      </Html>
-      <Line
-        points={[
-          [np[0] - 0.2, np[1] + 0.02, np[2]],
-          [np[0] + 0.2, np[1] + 0.02, np[2]],
-        ]}
-        color="#38806b"
-        lineWidth={1.5}
-        dashed
-        dashSize={0.015}
-        gapSize={0.012}
-      />
-      <Html position={[0.21, np[1] + 0.05, np[2]]} center>
-        <span className="scene-label">NEUTRAL POINT</span>
-      </Html>
-      <Line
-        points={[cg, [cg[0], cg[1] + 0.32, cg[2]]]}
-        color="#3e7c68"
-        lineWidth={2}
-      />
-      <mesh position={[cg[0], cg[1] + 0.33, cg[2]]}>
-        <coneGeometry args={[0.015, 0.035, 12]} />
-        <meshBasicMaterial color="#3e7c68" />
-      </mesh>
-      <Html position={[cg[0] + 0.1, cg[1] + 0.32, cg[2]]} center>
-        <span className="scene-label">L {number(aero.L, 1)} N</span>
-      </Html>
-      {structure?.spanwise &&
-        [-1, 1].map((sign) => (
-          <Line
-            key={sign}
-            points={structure.spanwise.map((s) => [
-              sign * s.y_m,
-              0.115 + 0.05 * s.y_m + s.deflection_m * 4,
-              0.45 - (0.28 + 0.3 * parameters.chord_m),
-            ])}
-            color={structureFailed ? "#bb5043" : "#c38252"}
-            lineWidth={2}
-          />
-        ))}
-    </group>
-  );
-}
-
-function Scene({
-  geometry,
-  explode,
-  inside,
-  selected,
-  onSelect,
-  mode,
-  evidence,
-  evaluations,
-  preset,
-  autoRotate,
-  stepGroups,
-}) {
-  const controls = useRef();
-  return (
-    <Canvas
-      shadows
-      camera={{ position: [1.55, 1.15, 1.9], fov: 36, near: 0.01, far: 50 }}
-      dpr={[1, 2]}
-      onPointerMissed={() => onSelect(null)}
-    >
-      <color attach="background" args={["#eef0e8"]} />
-      <ambientLight intensity={0.6} />
-      <hemisphereLight args={["#ffffff", "#a5b2a1", 0.9]} />
-      <directionalLight
-        position={[-2, 4, 3]}
-        intensity={1.7}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-      />
-      <directionalLight position={[2, 1, -2]} intensity={0.6} />
-      <Suspense fallback={null}>
-        <group>
-          {geometry?.parts.map((part) => (
-            <Part
-              key={part.id}
-              {...{ part, explode, inside, onSelect, stepGroups }}
-              selected={selected?.id}
-            />
-          ))}
-        </group>
-        {mode === "Simulate" && geometry && (
-          <AnalysisOverlay
-            evidence={evidence}
-            evaluations={evaluations}
-            parameters={geometry.parameters}
-          />
-        )}
-        <ContactShadows
-          position={[0, -0.1, 0]}
-          opacity={0.25}
-          scale={5}
-          blur={3}
-          far={2}
-          resolution={512}
-          frames={Infinity}
-        />
-      </Suspense>
-      <gridHelper
-        args={[5, 50, "#e5e8df", "#e8ebe2"]}
-        position={[0, -0.115, 0]}
-      />
-      <OrbitControls
-        ref={controls}
-        target={[0, 0.07, 0]}
-        minDistance={0.5}
-        maxDistance={5}
-        enablePan
-        autoRotate={autoRotate}
-        autoRotateSpeed={0.5}
-        maxPolarAngle={Math.PI * 0.48}
-      />
-      <Camera preset={preset} controls={controls} />
-    </Canvas>
   );
 }
 
@@ -374,7 +158,17 @@ function VTrace({ stage, gate, onClick }) {
             cx={14 + 56 * i}
             cy={[9, 24, 34, 24, 9][i]}
             r="3"
-            fill={i === 4 ? (gate === "PASS" ? "#315d49" : gate === "FAIL" ? "#b06c55" : "#b2a266") : i <= done ? "#315d49" : "#d1d7cb"}
+            fill={
+              i === 4
+                ? gate === "PASS"
+                  ? "#315d49"
+                  : gate === "FAIL"
+                    ? "#b06c55"
+                    : "#b2a266"
+                : i <= done
+                  ? "#315d49"
+                  : "#d1d7cb"
+            }
           />
         ))}
       </svg>
@@ -415,6 +209,27 @@ function App() {
   const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [perturbation, setPerturbation] = useState({});
+  const [environment, setEnvironment] = useState("airflow");
+  const [labels, setLabels] = useState(true);
+  const [wiring, setWiring] = useState(true);
+  const [flow, setFlow] = useState(null);
+  useEffect(() => {
+    setFlow(null);
+    if (!runId || !selectedVersionForFlow()) return;
+    let cancelled = false;
+    api(url(runId, `${selectedVersionForFlow()}/simulation.json`))
+      .then((value) => {
+        if (!cancelled && value.design_id === selectedVersionForFlow())
+          setFlow(value);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    function selectedVersionForFlow() {
+      return versionId || run?.current_design_id;
+    }
+  }, [runId, versionId, run?.current_design_id, run?.visualization_file]);
   useEffect(() => {
     if (!runId) return;
     const address = new URL(window.location.href);
@@ -436,9 +251,17 @@ function App() {
           /Failed to fetch|NetworkError/.test(previous) ? "" : previous,
         );
         if (!runId && r.length) {
-          const published = r.find((item) => item.status === "complete" && item.current_design_id && item.provider === "Astra")
-            || r.find((item) => item.status === "complete" && item.current_design_id)
-            || r[0];
+          const published =
+            r.find(
+              (item) =>
+                item.status === "complete" &&
+                item.current_design_id &&
+                item.provider === "Astra",
+            ) ||
+            r.find(
+              (item) => item.status === "complete" && item.current_design_id,
+            ) ||
+            r[0];
           setRunId(published.id);
         }
       } catch (e) {
@@ -549,6 +372,22 @@ function App() {
   const aero = evidence.find((e) => e.method === "aero")?.output?.raw;
   const structure = evidence.find((e) => e.method === "structure")?.output?.raw;
   const isRunning = run?.status === "running";
+  const caseKey = runs.find((item) => item.id === runId)?.comparison_key;
+  const recordedCases =
+    !versionId && caseKey
+      ? runs.filter(
+          (item) =>
+            item.status === "complete" &&
+            item.visualization_file &&
+            item.comparison_key === caseKey,
+        )
+      : [];
+  const validFlow =
+    flow?.design_id === selectedVersion &&
+    flow?.trim_output_hash ===
+      evidence.find((e) => e.method === "aero")?.output_hash
+      ? flow
+      : null;
   const stepInfo = assembly?.steps[step];
   const submit = async (offline = false) => {
     setBusy(true);
@@ -582,7 +421,12 @@ function App() {
       const parameter_changes = {};
       const mission_changes = {};
       for (const [key, value] of Object.entries(perturbation)) {
-        if (key === "payload_kg") mission_changes[key] = value;
+        if (
+          ["payload_kg", "cruise_mps", "altitude_m", "load_factor"].includes(
+            key,
+          )
+        )
+          mission_changes[key] = value;
         else parameter_changes[key] = value;
       }
       const next = await api("/api/runs", {
@@ -632,6 +476,7 @@ function App() {
                 setSelected(null);
                 if (m === "Assemble") setExplode(0.7);
                 else setExplode(0);
+                if (m === "Simulate") setInside(false);
               }}
             >
               <span>0{i + 1}</span>
@@ -648,7 +493,9 @@ function App() {
           Open source <ArrowUpRight size={15} />
         </a>
       </header>
-      <section className="workspace">
+      <section
+        className={`workspace ${mode === "Simulate" ? (environment !== "flight" ? "dark-simulation" : "flight-simulation") : ""}`}
+      >
         <div className="canvas-wrap">
           {geometry ? (
             <Scene
@@ -662,6 +509,10 @@ function App() {
                 evaluations,
                 preset,
                 autoRotate,
+                labels,
+                wiring,
+                environment,
+                flow: validFlow,
               }}
               onSelect={setSelected}
               stepGroups={mode === "Assemble" ? stepInfo?.groups : null}
@@ -714,7 +565,11 @@ function App() {
             {run ? "Define a new mission" : "Start a mission"}
             <ArrowUpRight size={15} />
           </button>
-          <VTrace stage={run?.stage} gate={data?.gate} onClick={() => showEvidence(null)} />
+          <VTrace
+            stage={run?.stage}
+            gate={data?.gate}
+            onClick={() => showEvidence(null)}
+          />
           {run && (
             <div className="run-note">
               <span className="tiny-label">
@@ -724,15 +579,20 @@ function App() {
               </span>
               <p>{run.provider}</p>
               {run.dalus && (
-                <button className="text-button" onClick={() => showEvidence("dalus")}>
+                <button
+                  className="text-button"
+                  onClick={() => showEvidence("dalus")}
+                >
                   Dalus MCP · {run.dalus.commit} <ArrowUpRight size={12} />
                 </button>
               )}
               {run.system?.scenario && (
                 <p className="mission-facts">
                   {number(run.system.scenario.payload_kg * 1000, 0)} g payload
-                  {" · "}{number(run.system.scenario.cruise_mps, 0)} m/s
-                  {" · "}{number(run.system.scenario.endurance_min, 0)} min target
+                  {" · "}
+                  {number(run.system.scenario.cruise_mps, 0)} m/s
+                  {" · "}
+                  {number(run.system.scenario.endurance_min, 0)} min target
                 </p>
               )}
               <small>
@@ -773,6 +633,15 @@ function App() {
               onClick={() => setPreset("side")}
             >
               Side
+            </button>
+            <button
+              className={preset === "detail" ? "active" : ""}
+              onClick={() => {
+                setPreset("detail");
+                setInside(true);
+              }}
+            >
+              Detail
             </button>
             <button
               aria-label="Toggle auto rotation"
@@ -826,7 +695,9 @@ function App() {
                   href={url(runId, `${selectedVersion}/${selected.file}`)}
                   download
                 >
-                  Download part {selected.file.endsWith(".step") ? "STEP" : "STL"} <Download size={13} />
+                  Download part{" "}
+                  {selected.file.endsWith(".step") ? "STEP" : "STL"}{" "}
+                  <Download size={13} />
                 </a>
               )}
             </>
@@ -875,6 +746,31 @@ function App() {
                 onChange={(e) => setExplode(+e.target.value)}
                 aria-label="Explode distance"
               />
+              <div className="view-toggles">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={labels}
+                    onChange={(e) => setLabels(e.target.checked)}
+                  />{" "}
+                  Part labels
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={wiring}
+                    onChange={(e) => setWiring(e.target.checked)}
+                  />{" "}
+                  Wiring concept
+                </label>
+              </div>
+              {(inside || explode > 0) && (
+                <p className="tiny">
+                  Colored routes illustrate connections; routing, connectors and
+                  access remain unverified. Purchased parts are dimensional
+                  envelopes.
+                </p>
+              )}
               <div className="model-stats">
                 <div>
                   <b>
@@ -909,13 +805,216 @@ function App() {
                 <span>INDEPENDENT ANALYSIS</span>
                 <Settings2 size={15} />
               </div>
+              <div
+                className="environment-tabs"
+                aria-label="Analysis environment"
+              >
+                {[
+                  ["airflow", "Airflow"],
+                  ["structure", "Load bench"],
+                  ["flight", "Flight"],
+                ].map(([id, name]) => (
+                  <button
+                    key={id}
+                    className={environment === id ? "active" : ""}
+                    onClick={() => setEnvironment(id)}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+              <div className="condition-presets">
+                <button
+                  onClick={() =>
+                    setPerturbation((p) => ({
+                      ...p,
+                      cruise_mps: 12,
+                      altitude_m: 0,
+                      load_factor: 2.5,
+                    }))
+                  }
+                >
+                  Cruise
+                </button>
+                <button
+                  onClick={() =>
+                    setPerturbation((p) => ({
+                      ...p,
+                      cruise_mps: 8,
+                      altitude_m: 0,
+                      load_factor: 2.5,
+                    }))
+                  }
+                >
+                  Slow flight
+                </button>
+                <button
+                  onClick={() =>
+                    setPerturbation((p) => ({
+                      ...p,
+                      cruise_mps: 12,
+                      altitude_m: 2000,
+                      load_factor: 2.5,
+                    }))
+                  }
+                >
+                  High altitude
+                </button>
+                <button
+                  onClick={() =>
+                    setPerturbation((p) => ({ ...p, load_factor: 4 }))
+                  }
+                >
+                  4 g load
+                </button>
+              </div>
+              {Object.keys(perturbation).some((k) =>
+                ["cruise_mps", "altitude_m", "load_factor"].includes(k),
+              ) && (
+                <div className="condition-draft">
+                  <b>Draft condition · results below are unchanged</b>
+                  <p>
+                    {perturbation.cruise_mps ?? run.system.scenario.cruise_mps}{" "}
+                    m/s ·{" "}
+                    {perturbation.altitude_m ?? run.system.scenario.altitude_m}{" "}
+                    m ASL ·{" "}
+                    {perturbation.load_factor ??
+                      run.system.scenario.load_factor}{" "}
+                    g
+                  </p>
+                  <button
+                    className="primary"
+                    disabled={busy || config.busy || isRunning}
+                    onClick={() => runExperiment(false)}
+                  >
+                    Run condition checks <ArrowRight size={12} />
+                  </button>
+                </div>
+              )}
+              {recordedCases.length > 0 && (
+                <label className="recorded-cases">
+                  OPEN A COMPUTED CONDITION
+                  <select
+                    aria-label="Computed condition"
+                    value={
+                      recordedCases.some((c) => c.id === runId) ? runId : ""
+                    }
+                    onChange={(e) => chooseRun(e.target.value)}
+                  >
+                    <option value="" disabled>
+                      Select a verified run
+                    </option>
+                    {recordedCases.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.scenario.cruise_mps} m/s · {c.scenario.altitude_m} m
+                        · {c.scenario.load_factor} g · {c.gate}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <div className="simulation-summary">
+                <span className="tiny-label">RECORDED CONDITIONS</span>
+                <div className="case-verdicts">
+                  <Badge status="PASS">{counts.PASS} PASS</Badge>
+                  <Badge status="FAIL">{counts.FAIL} FAIL</Badge>
+                  <Badge status="UNKNOWN">{counts.UNKNOWN} UNKNOWN</Badge>
+                </div>
+                <b>
+                  {number(run?.system?.scenario?.cruise_mps, 0)} m/s ·{" "}
+                  {number(run?.system?.scenario?.altitude_m, 0)} m ASL ·{" "}
+                  {number(run?.system?.scenario?.load_factor, 1)} g structural
+                  load
+                </b>
+                {environment === "airflow" ? (
+                  <>
+                    <p>
+                      {validFlow?.status === "COMPUTED"
+                        ? `${flow.panel_count} VLM panels · ${flow.streamlines_m.length} computed streamlines`
+                        : "No computed flow field for this version. Run checks below to generate it."}
+                    </p>
+                    {validFlow?.status === "COMPUTED" && (
+                      <>
+                        <div className="load-legend" />
+                        <small>
+                          Panel normal load ·{" "}
+                          {number(
+                            Math.min(
+                              ...flow.panels.map((p) => p.normal_load_pa),
+                            ),
+                            0,
+                          )}{" "}
+                          to{" "}
+                          {number(
+                            Math.max(
+                              ...flow.panels.map((p) => p.normal_load_pa),
+                            ),
+                            0,
+                          )}{" "}
+                          Pa
+                        </small>
+                        <p>
+                          VLM lift {number(flow.lift_n, 1)} N · trim model{" "}
+                          {number(flow.aero_buildup_lift_n, 1)} N. Difference{" "}
+                          {number(flow.lift_difference_n, 1)} N.
+                        </p>
+                      </>
+                    )}
+                    <small>
+                      Inviscid lifting surfaces, not CFD. No separation, body
+                      blockage or propwash. Tracer animation is illustrative.
+                    </small>
+                  </>
+                ) : environment === "structure" ? (
+                  <>
+                    <p>
+                      Euler–Bernoulli spar bending ·{" "}
+                      {number(structure?.stress_pa / 1e6, 1)} MPa root stress.
+                    </p>
+                    <small>
+                      Deflection displayed 4×. Color shows bending moment.
+                      Fixture illustrates ideal restraint; joints and full
+                      airframe remain UNKNOWN.
+                    </small>
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      Steady level trim at the recorded speed and atmospheric
+                      altitude.
+                    </p>
+                    <small>
+                      Terrain is illustrative, not surveyed or simulated. This
+                      is a static trim solution, not a flight trajectory or
+                      flight clearance.
+                    </small>
+                  </>
+                )}
+              </div>
               <div className="metric">
-                <span>Longitudinal static margin</span>
+                <span>
+                  {environment === "structure"
+                    ? "Spar tip deflection"
+                    : "Longitudinal static margin"}
+                </span>
                 <strong>
-                  {number(aero?.static_margin * 100, 1)}
-                  <small>% MAC</small>
+                  {number(
+                    environment === "structure"
+                      ? structure?.tip_deflection_m * 1000
+                      : aero?.static_margin * 100,
+                    1,
+                  )}
+                  <small>{environment === "structure" ? "mm" : "% MAC"}</small>
                 </strong>
-                <button onClick={() => showEvidence("stability-min")}>
+                <button
+                  onClick={() =>
+                    showEvidence(
+                      environment === "structure"
+                        ? "deflection"
+                        : "stability-min",
+                    )
+                  }
+                >
                   Inspect evidence <ArrowUpRight size={12} />
                 </button>
               </div>
@@ -940,6 +1039,33 @@ function App() {
                     <span>WHAT IF YOU CHANGE…</span>
                   </div>
                   {[
+                    [
+                      "cruise_mps",
+                      "Airspeed",
+                      8,
+                      22,
+                      1,
+                      "m/s",
+                      run.system.scenario.cruise_mps,
+                    ],
+                    [
+                      "altitude_m",
+                      "Atmospheric altitude",
+                      0,
+                      2500,
+                      100,
+                      "m ASL",
+                      run.system.scenario.altitude_m,
+                    ],
+                    [
+                      "load_factor",
+                      "Structural load factor",
+                      1,
+                      4,
+                      0.1,
+                      "g",
+                      run.system.scenario.load_factor,
+                    ],
                     [
                       "span_m",
                       "Wingspan",
@@ -992,7 +1118,9 @@ function App() {
                   ))}
                   <p className="tiny">
                     Draft values. Run checks to generate a new CAD version and
-                    fresh evidence. Payload changes amend the mission baseline.
+                    fresh evidence. Condition and payload changes amend the
+                    mission baseline. The scene above retains recorded results
+                    until checks finish.
                   </p>
                   <button
                     className="primary"
@@ -1162,7 +1290,12 @@ function App() {
       <footer>
         <div className="footer-thesis">
           Generated is not verified.<span>Evidence makes the difference.</span>
-          <a className="text-link" href="/demo/openv-demo.mp4" target="_blank" rel="noreferrer">
+          <a
+            className="text-link"
+            href="/demo/openv-demo.mp4"
+            target="_blank"
+            rel="noreferrer"
+          >
             Watch the 1-minute demo <ArrowUpRight size={12} />
           </a>
         </div>
@@ -1382,7 +1515,10 @@ function App() {
                         </p>
                       ))}
                       {requirement?.contracts.length === 0 && (
-                        <p>No verification contract covers this clause yet. Its status remains UNKNOWN.</p>
+                        <p>
+                          No verification contract covers this clause yet. Its
+                          status remains UNKNOWN.
+                        </p>
                       )}
                       {e.reasons.map((reason, i) => (
                         <p key={i}>{reason}</p>
@@ -1438,11 +1574,17 @@ function App() {
                   {exp.invalidated_evidence.length} evidence records invalidated
                 </small>
                 {Object.entries(exp.actual_effect || {})
-                  .filter(([, effect]) => effect.before !== effect.after || effect.after === "FAIL")
+                  .filter(
+                    ([, effect]) =>
+                      effect.before !== effect.after || effect.after === "FAIL",
+                  )
                   .map(([id, effect]) => (
                     <div className="experiment-outcome" key={id}>
                       <b>{human(id)}</b>
-                      <span><Badge status={effect.before} /> → <Badge status={effect.after} /></span>
+                      <span>
+                        <Badge status={effect.before} /> →{" "}
+                        <Badge status={effect.after} />
+                      </span>
                       <p>{effect.reasons?.[0]}</p>
                     </div>
                   ))}

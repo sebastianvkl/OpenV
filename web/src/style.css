@@ -1022,11 +1022,28 @@ code {
   .v-trace {
     display: none;
   }
-  .run-note { display: block; width: auto; margin-top: 13px; padding: 0; border: 0; }
-  .run-note > * { display: none; }
-  .run-note > .tiny-label, .run-note > p:first-of-type { display: inline; }
-  .run-note > p:first-of-type { margin-left: 8px; font-size: 10px; }
-  .run-note > small { display: block; margin-top: 4px; }
+  .run-note {
+    display: block;
+    width: auto;
+    margin-top: 13px;
+    padding: 0;
+    border: 0;
+  }
+  .run-note > * {
+    display: none;
+  }
+  .run-note > .tiny-label,
+  .run-note > p:first-of-type {
+    display: inline;
+  }
+  .run-note > p:first-of-type {
+    margin-left: 8px;
+    font-size: 10px;
+  }
+  .run-note > small {
+    display: block;
+    margin-top: 4px;
+  }
   .canvas-wrap {
     inset: 285px -50px auto;
     height: 365px;
@@ -1193,5 +1210,183 @@ code {
   display: grid;
   gap: 8px;
 }
-.experiment-outcome > span { display: flex; align-items: center; gap: 8px; }
-.experiment-outcome p { margin: 0; font-size: 12px; }
+.experiment-outcome > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.experiment-outcome p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.view-toggles {
+  display: flex;
+  gap: 16px;
+  margin: 15px 0 8px;
+  font-size: 11px;
+}
+.view-toggles label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.view-toggles input {
+  accent-color: #3e6854;
+}
+.environment-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #e7ece4;
+  border-radius: 6px;
+  margin: 0 0 15px;
+}
+.environment-tabs button {
+  flex: 1;
+  padding: 9px 3px;
+  font-size: 11px;
+  border-radius: 4px;
+}
+.environment-tabs button.active {
+  background: #315b4c;
+  color: white;
+}
+.simulation-summary {
+  padding: 12px;
+  margin-bottom: 15px;
+  background: #f0f3ec;
+  border: 1px solid #e0e6da;
+  border-radius: 6px;
+}
+.simulation-summary b {
+  display: block;
+  font-size: 11px;
+  margin-top: 7px;
+  line-height: 1.6;
+}
+.simulation-summary p {
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 10px 0;
+}
+.simulation-summary small {
+  display: block;
+  font-size: 10px;
+  color: #697769;
+  line-height: 1.6;
+}
+.load-legend {
+  height: 5px;
+  background: linear-gradient(90deg, #617bd0, #53b7bd, #efae52);
+  border-radius: 3px;
+  margin: 9px 0 5px;
+}
+.condition-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 12px 0;
+}
+.condition-presets button {
+  font-size: 10px;
+  padding: 7px 9px;
+  border: 1px solid #d5dece;
+  border-radius: 4px;
+  background: #f1f4ec;
+}
+.condition-presets button:hover {
+  background: #e0e8d9;
+}
+.dark-label {
+  background: #1c333d;
+  border-color: #496470;
+  color: #e0eeeb;
+}
+.dark-simulation .intro h1,
+.dark-simulation .intro > p,
+.dark-simulation .intro .eyebrow,
+.dark-simulation .run-note,
+.dark-simulation .scene-top,
+.dark-simulation .scene-top .draft-label {
+  color: #dae6df;
+}
+.dark-simulation .run-note small,
+.dark-simulation .run-note .tiny-label,
+.dark-simulation .mission-facts,
+.dark-simulation .v-trace span {
+  color: #a5bbb3;
+}
+.dark-simulation .intro .text-button {
+  color: #c9dbd2;
+}
+.dark-simulation .scene-controls {
+  background: #203b46;
+  border-color: #415b66;
+  color: #bdcec9;
+}
+.dark-simulation .scene-controls button.active {
+  background: #3e626b;
+  color: white;
+}
+@media (max-width: 760px) {
+  .view-toggles {
+    flex-wrap: wrap;
+  }
+}
+.dark-simulation {
+  background: #182c35;
+}
+.dark-simulation .inspector {
+  background: #f4f6efed;
+}
+.dark-simulation .scene-caption {
+  color: #a5bbb3;
+}
+.condition-draft {
+  padding: 10px;
+  border: 1px solid #d6bb8d;
+  border-radius: 5px;
+  background: #f9f0df;
+  margin-bottom: 12px;
+  font-size: 10px;
+}
+.condition-draft p {
+  margin: 8px 0;
+}
+.condition-draft .primary {
+  padding: 9px 10px;
+  width: 100%;
+}
+.recorded-cases {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 1px;
+  margin: 12px 0;
+}
+.recorded-cases select {
+  display: block;
+  margin-top: 7px;
+  padding: 9px 5px;
+  width: 100%;
+  border: 1px solid #d2dccb;
+  background: #f2f5ed;
+  color: #315a48;
+  font-family: inherit;
+  font-size: 10px;
+  border-radius: 4px;
+}
+.case-verdicts {
+  display: flex;
+  gap: 5px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.case-verdicts .badge {
+  font-size: 8px;
+  padding: 4px;
+}
+.flight-simulation {
+  background: #dce6df;
+}
