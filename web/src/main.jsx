@@ -1626,14 +1626,14 @@ function App() {
             </div>
             {run?.dalus && (
               <details className="dalus-trace" open={detail === "dalus"}>
-                <summary>Dalus system of record · {run.dalus.commit}</summary>
+                <summary>Dalus captured record · {run.dalus.commit}</summary>
                 <p className="tiny">
                   Requirements, architecture, parameters, interfaces,
                   verification cases and experiments are committed through MCP.
                   This page displays the exported engineering evidence.
                 </p>
                 <p className="tiny">
-                  Model: <code>{run.dalus.model_id}</code>
+                  System model: <code>{run.dalus.model_id}</code>
                 </p>
                 <pre>
                   {JSON.stringify(

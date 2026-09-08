@@ -6,6 +6,8 @@ Dalus and read back before the pipeline can treat it as authoritative.
 from __future__ import annotations
 
 import asyncio
+import copy
+import fcntl
 import html
 import json
 import os
@@ -39,8 +41,26 @@ class DalusStore:
     def __init__(self, run_directory: Path, team_id: str, model_id: str | None = None):
         self.directory=run_directory
         self.team_id=team_id
-        self.map={"model_id":model_id,"parts":{},"nodes":{},"variables":{},"requirements":{},"test_cases":{},"test_runs":{},"commit":"incomplete","fixed_variables":{}}
+        self.shared_path=Path(os.environ.get("OPENV_DALUS_MAPPING",str(Path(os.environ.get("OPENV_AUTH_DIR",".openv"))/"dalus-system.json")))
+        self.shared_path.parent.mkdir(parents=True,exist_ok=True)
+        self._lock=self.shared_path.with_suffix(".lock").open("a")
+        try:fcntl.flock(self._lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError:raise RuntimeError("Another process is updating this Dalus system; retry after it completes")
+        configured=model_id or os.environ.get("OPENV_DALUS_MODEL_ID")
+        self.map={"model_id":configured,"parts":{},"nodes":{},"variables":{},"requirements":{},"test_cases":{},"test_runs":{},"commit":"incomplete","fixed_variables":{}}
+        if self.shared_path.exists():
+            saved=json.loads(self.shared_path.read_text())
+            if configured and saved.get("model_id")!=configured:raise ValueError("Configured Dalus model does not match persistent mapping")
+            self.map=saved
+        elif configured:
+            raise ValueError("Import this existing OpenV model's mapping before updating it; refusing to create duplicate elements")
         self.hardware=None
+
+    def close(self):
+        if getattr(self,"_lock",None):self._lock.close();self._lock=None
+
+    def __del__(self):
+        self.close()
 
     def public_ref(self):
         return {"model_id":self.map["model_id"],"commit":self.map["commit"],
@@ -64,145 +84,207 @@ class DalusStore:
         return result
 
     async def search(self, connection, collections):
-        result=await self.call(connection,"searchModel",{"modelId":self.map["model_id"],"collections":collections})
-        # Search responses can be capped. Never accept a partial read as a full commit.
-        if result.get("truncated") or result.get("model",{}).get("truncated"):
-            raise RuntimeError("Dalus read-back was truncated; narrow/page the query before committing")
-        model=result.get("model",result)
-        return {key:list(value.values()) if isinstance(value,dict) else value for key,value in model.items()}
+        # searchModel exposes offset, but no page-size/total guarantee. Read each
+        # collection until an empty page; never infer completeness from tool success.
+        output={}
+        for collection in collections:
+            records=[];seen=set();offset=0
+            for _ in range(100):
+                result=await self.call(connection,"searchModel",{"modelId":self.map["model_id"],"collections":[collection],"offset":offset})
+                model=result.get("model",result)
+                page=model.get(collection,[])
+                page=list(page.values()) if isinstance(page,dict) else page
+                if not isinstance(page,list):raise RuntimeError("Malformed Dalus collection")
+                if not page:
+                    remaining=result.get("truncated",{}).get("remaining",{}).get(collection,0)
+                    if remaining:raise RuntimeError("Dalus returned an empty page with remaining records")
+                    break
+                ids=[item.get("id") if isinstance(item,dict) else str(item) for item in page]
+                if len(set(ids))!=len(ids) or any(id in seen for id in ids):raise RuntimeError("Dalus pagination did not advance consistently")
+                records.extend(page);seen.update(ids);offset+=len(page)
+            else:raise RuntimeError("Dalus collection exceeds bounded read-back limit")
+            output[collection]=records
+        return output
+
+    async def confirmed(self,connection,collection,predicate):
+        for attempt in range(4):
+            result=await self.search(connection,[collection])
+            if predicate(result[collection]):return result[collection]
+            if attempt<3:await asyncio.sleep(.5*(attempt+1))
+        raise RuntimeError(f"Dalus {collection} read-back did not match after bounded consistency retries")
 
     def persist(self):
         from openv.pipeline import write_json
         write_json(self.directory/"dalus-mapping.json",self.map)
+        write_json(self.shared_path,self.map)
+        self.shared_path.chmod(0o600)
 
     def create_system(self, hardware, design):
         self.hardware=hardware
         async def create():
-            async with session() as s:
+            from openv.pipeline import write_json
+            async with session() as connection:
                 if not self.map["model_id"]:
-                    created=await self.call(s,"createModel",{"teamId":self.team_id,"name":f"OpenV · {self.directory.name}"})
+                    created=await self.call(connection,"createModel",{"teamId":self.team_id,"name":"OpenV · Albatross motor-glider"})
                     self.map["model_id"]=created["model"]["id"]
                     self.map["model_slug"]=created["model"].get("slug")
                     self.persist()
-                parents={}
-                ordered=[]
+                snapshot=await self.search(connection,["parts","variables","ports","connections","requirements","testCases"])
+                write_json(self.directory/"dalus-before-update.json",snapshot)
+                previous_parts={item['id']:item for item in snapshot['parts']}
+                previous_variables={item['id']:item for item in snapshot['variables']}
+                previous_requirements={item['customerId']:item for item in snapshot['requirements'] if item.get('customerId')}
+                if len(previous_requirements)!=len([item for item in snapshot['requirements'] if item.get('customerId')]):
+                    raise RuntimeError('Ambiguous duplicate Dalus requirement customer IDs')
+                previous_cases={item['name'].removeprefix('OpenV / '):item for item in snapshot['testCases'] if item.get('name','').startswith('OpenV / ')}
+                if any(id not in previous_parts for id in self.map['parts'].values()):
+                    raise RuntimeError('Mapped Dalus elements missing; refusing duplicate reconstruction')
+                # Close current verdicts before changing any engineering inputs.
+                if self.map.get('marker'):
+                    await self.write(connection,[op('updateVariable',id=self.map['marker'],value=f'incomplete:{design.id}')]+[
+                        op('updateRequirement',id=item['id'],status='In Progress') for item in previous_requirements.values()]+[op('updateTestCase',id=item['id'],status='In Progress') for item in previous_cases.values()])
+                    self.map['commit']='incomplete';self.persist()
+                if previous_parts:
+                    await self.write(connection,[op('addTradeStudy',title=f'OpenV baseline / {self.directory.name}',
+                        description=json.dumps({'run_id':self.directory.name,'new_baseline':hardware.baseline_id,'new_design':design.id,
+                            'previous_commit':snapshot['variables'] and next((v.get('value') for v in snapshot['variables'] if v.get('id')==self.map.get('marker')),None),
+                            'previous_snapshot':f'{self.directory.name}/dalus-before-update.json',
+                            'reason':'User-requested mission/design or engineering-definition update; historical evidence remains version-bound'}),
+                        alternatives=[{'name':design.id,'description':'Current candidate; external verification pending'}])])
+                parents={};ordered=[]
                 for parent,children in hardware.architecture.items():
                     if parent not in ordered:ordered.append(parent)
                     for child in children:
                         parents[child]=parent
                         if child not in ordered:ordered.append(child)
-                root=ordered[0]
+                root=ordered[0];self.map['root']=root
                 for component in hardware.components:
-                    if component.id not in ordered:
-                        ordered.append(component.id);parents[component.id]=root
-                for key in ordered:
-                    self.map["parts"][key]=uuid();self.map["nodes"][key]=uuid()
-                self.map["root"]=root
+                    if component.id not in ordered:ordered.append(component.id);parents[component.id]=root
                 ops=[]
                 for key in ordered:
-                    fields={"id":self.map["parts"][key],"nodeId":self.map["nodes"][key],"name":key.replace('-',' ').title(),
-                            "notes":f"OpenV element {key}. Baseline {hardware.baseline_id}."}
-                    if key in parents:fields["parentNodeId"]=self.map["nodes"][parents[key]]
-                    if key==root:fields["notes"]=json.dumps({"mission":hardware.mission,"baseline":hardware.baseline_id,"design_id":design.id,"commit":"incomplete"})
-                    ops.append(op("addPart",**fields))
-                self.map["marker"]=uuid()
-                ops.append(op("addVariable",id=self.map["marker"],name="openv_commit",value="incomplete",unitName="string",expression=""))
-                attribute_ids=[self.map["marker"]]
+                    exists=key in self.map['parts']
+                    if not exists:self.map['parts'][key]=uuid();self.map['nodes'][key]=uuid()
+                    fields={'id':self.map['parts'][key],'name':key.replace('-',' ').title(),
+                        'notes':json.dumps({'baseline':hardware.baseline_id,'design_id':design.id,'mission':hardware.mission}) if key==root else f'OpenV element {key}. Baseline {hardware.baseline_id}.'}
+                    if exists:
+                        if key in parents:fields['parentId']=self.map['parts'][parents[key]]
+                    else:
+                        fields['nodeId']=self.map['nodes'][key]
+                        if key in parents:fields['parentNodeId']=self.map['nodes'][parents[key]]
+                    ops.append(op('updatePart' if exists else 'addPart',**fields))
+                self.map.setdefault('marker',uuid())
+                ops.append(op('updateVariable' if self.map['marker'] in previous_variables else 'addVariable',id=self.map['marker'],name='openv_commit',value=f'incomplete:{design.id}',unitName='string'))
+                def variable(fields):
+                    ops.append(op('updateVariable' if fields['id'] in previous_variables else 'addVariable',**fields))
+                attributes=[self.map['marker']]
+                current_variables={}
                 for name,value in design.parameters.items():
-                    variable=uuid();self.map["variables"][name]=variable;attribute_ids.append(variable)
-                    unit="meter" if name.endswith("_m") else "degree" if name.endswith("_deg") else "dimensionless"
-                    ops.append(op("addVariable",id=variable,name=name,value=value,unitName=unit,expression="",
-                                  description=f"Canonical design parameter. {design.id}; SI units."))
-                scenario_units={"payload_kg":("gram","kilo"),"cruise_mps":("meter per second",None),
-                    "endurance_min":("second",None),"max_mass_kg":("gram","kilo"),"altitude_m":("meter",None),"load_factor":("dimensionless",None)}
+                    id=self.map['variables'].get(name) or uuid();current_variables[name]=id;attributes.append(id)
+                    variable({'id':id,'name':name,'value':value,'unitName':'meter' if name.endswith('_m') else 'degree' if name.endswith('_deg') else 'dimensionless',
+                        'description':f'Canonical design parameter. {design.id}; SI units.'})
+                self.map['variables']=current_variables
+                # Reconstruct identity indexes from Dalus attributes, not cached source values.
+                root_attributes=previous_parts.get(self.map['parts'][root],{}).get('attributeIds',[])
+                scenario_ids={previous_variables[id]['name']:id for id in root_attributes if id in previous_variables and previous_variables[id].get('description','').startswith('Frozen mission baseline')}
+                self.map['fixed_variables']={}
+                scenario_units={'payload_kg':('gram','kilo'),'cruise_mps':('meter per second',None),'endurance_min':('second',None),'max_mass_kg':('gram','kilo'),'altitude_m':('meter',None),'load_factor':('dimensionless',None)}
                 for name,value in hardware.scenario.items():
-                    if name=="text":continue
-                    variable=uuid();attribute_ids.append(variable)
-                    unit,prefix=scenario_units.get(name,("dimensionless",None))
-                    stored_value=value*60 if name=="endurance_min" else value
-                    fields={"id":variable,"name":"endurance_s" if name=="endurance_min" else name,"value":stored_value,
-                        "unitName":unit,"description":f"Frozen mission baseline {hardware.baseline_id}"}
-                    if prefix:fields["prefix"]=prefix
-                    ops.append(op("addVariable",**fields));self.map["fixed_variables"][variable]=fields
-                ops.append(op("updatePart",id=self.map["parts"][root],attributeIds=attribute_ids))
-                units={"kg":("gram","kilo"),"m":("meter",None),"A":("ampere",None),"V":("volt",None),
-                       "Ah":("ampere hour",None),"1":("dimensionless",None),"rpm/V":("dimensionless",None)}
+                    if name=='text':continue
+                    stored_name='endurance_s' if name=='endurance_min' else name
+                    id=scenario_ids.get(stored_name) or uuid();attributes.append(id)
+                    unit,prefix=scenario_units.get(name,('dimensionless',None))
+                    fields={'id':id,'name':stored_name,'value':value*60 if name=='endurance_min' else value,'unitName':unit,'description':f'Frozen mission baseline {hardware.baseline_id}'}
+                    if prefix:fields['prefix']=prefix
+                    variable(fields);self.map['fixed_variables'][id]=fields
+                ops.append(op('updatePart',id=self.map['parts'][root],attributeIds=attributes))
+                units={'kg':('gram','kilo'),'m':('meter',None),'A':('ampere',None),'V':('volt',None),'Ah':('ampere hour',None),'1':('dimensionless',None)}
                 for component in hardware.components:
+                    old_ids=previous_parts.get(self.map['parts'][component.id],{}).get('attributeIds',[])
+                    by_name={previous_variables[id]['name']:id for id in old_ids if id in previous_variables}
                     ids=[]
                     for name,prop in component.properties.items():
-                        variable=uuid();ids.append(variable)
-                        unit,prefix=units.get(prop.unit,("string",None))
-                        fields={"id":variable,"name":name,"value":prop.value,"unitName":unit,"expression":"",
-                                "description":json.dumps({"quality":prop.quality,"source":prop.source,"original_unit":prop.unit})}
-                        if prefix:fields["prefix"]=prefix
-                        if prop.unit=="rpm/V":
-                            fields.update(value=f"{prop.value} rpm/V",unitName="string")
-                        elif isinstance(prop.value,str):
-                            fields["unitName"]="string"
-                        ops.append(op("addVariable",**fields))
-                        self.map["fixed_variables"][variable]=fields
-                    ops.append(op("updatePart",id=self.map["parts"][component.id],name=component.name,attributeIds=ids,
-                                  notes=json.dumps({"manufacturer":component.manufacturer,"part_number":component.part_number,"revision":component.revision})))
-                # Route interfaces through explicit parent/child delegation ports.
+                        id=by_name.get(name) or uuid();ids.append(id);unit,prefix=units.get(prop.unit,('string',None))
+                        fields={'id':id,'name':name,'value':prop.value,'unitName':unit,
+                            'description':json.dumps({'quality':prop.quality,'source':prop.source,'original_unit':prop.unit})}
+                        if prefix:fields['prefix']=prefix
+                        if prop.unit=='rpm/V':fields.update(value=f'{prop.value} rpm/V',unitName='string')
+                        elif isinstance(prop.value,str):fields['unitName']='string'
+                        variable(fields);self.map['fixed_variables'][id]=fields
+                    ops.append(op('updatePart',id=self.map['parts'][component.id],name=component.name,attributeIds=ids,
+                        notes=json.dumps({'manufacturer':component.manufacturer,'part_number':component.part_number,'revision':component.revision})))
                 for interface in hardware.interfaces:
+                    old_ports=[p for p in snapshot['ports'] if p.get('name')==interface.id]
+                    if old_ports:
+                        for port in old_ports:
+                            old=json.loads(port.get('notes','{}'))
+                            if old.get('endpoints')!=list(interface.endpoints):raise RuntimeError('Interface endpoint migration requires an explicit route update')
+                            ops.append(op('updatePort',id=port['id'],notes=json.dumps(interface.model_dump())))
+                        ops.extend(op('updateConnection',id=edge['id'],notes=json.dumps(interface.definition)) for edge in snapshot['connections'] if edge.get('name')==interface.id)
+                        continue
                     first=interface.endpoints[0]
                     for target in interface.endpoints[1:]:
                         def ancestry(element):
                             path=[element]
                             while element in parents:element=parents[element];path.append(element)
                             return path
-                        left,right=ancestry(first),ancestry(target)
-                        common=next(node for node in left if node in right)
-                        route=left[:left.index(common)+1]+list(reversed(right[:right.index(common)]))
-                        port_nodes=[]
+                        left,right=ancestry(first),ancestry(target);common=next(node for node in left if node in right)
+                        route=left[:left.index(common)+1]+list(reversed(right[:right.index(common)]));nodes=[]
                         for element in route:
-                            port_node=uuid();port_nodes.append(port_node)
-                            ops.append(op("addPort",name=interface.id,nodeId=port_node,id=uuid(),
-                                          parentNodeId=self.map["nodes"][element],notes=json.dumps(interface.model_dump())))
-                        for source_node,target_node in zip(port_nodes,port_nodes[1:]):
-                            ops.append(op("addConnection",id=uuid(),name=interface.id,
-                                          sourcePortNodeId=source_node,targetPortNodeId=target_node,notes=json.dumps(interface.definition)))
-                await self.write(s,ops)
-                self.persist()
-                req_ops=[]
+                            node=uuid();nodes.append(node)
+                            ops.append(op('addPort',id=uuid(),nodeId=node,name=interface.id,parentNodeId=self.map['nodes'][element],notes=json.dumps(interface.model_dump())))
+                        ops.extend(op('addConnection',id=uuid(),name=interface.id,sourcePortNodeId=a,targetPortNodeId=b,notes=json.dumps(interface.definition)) for a,b in zip(nodes,nodes[1:]))
+                await self.write(connection,ops);self.persist()
+                wanted={r.id for r in hardware.requirements};ops=[]
+                for key,item in previous_requirements.items():
+                    if key not in wanted:
+                        ops.append(op('updateRequirement',id=item['id'],status='Incomplete',lifecycleStatus='Deprecated',systems=[]))
+                        if key in previous_cases:ops.append(op('updateTestCase',id=previous_cases[key]['id'],lifecycleStatus='Deprecated',status='Blocked'))
                 for requirement in hardware.requirements:
-                    owner=self.map["parts"].get(requirement.owner,self.map["parts"][root])
-                    text=requirement.statement+". "+"; ".join(f"{c.metric} {c.operator} {c.threshold} {c.unit}. Scope: {c.scope}" for c in requirement.contracts)
-                    req_ops.append(op("addRequirement",customerId=requirement.id,name=requirement.statement,
-                        statement=text,tiptapDocument=f"<p>{html.escape(text)}</p>",status="Incomplete",systems=[owner],
-                        lifecycleStatus="Baselined",info={"comment":json.dumps({"baseline":hardware.baseline_id,"origin":requirement.origin,"contracts":[c.model_dump() for c in requirement.contracts]})}))
-                await self.write(s,req_ops)
-                data=await self.search(s,["requirements"])
-                requirements=data.get("requirements",[])
-                self.map["requirements"]={r["customerId"]:r["id"] for r in requirements}
-                if set(self.map["requirements"])!={r.id for r in hardware.requirements}:
-                    raise RuntimeError("Dalus requirement read-back does not match the frozen baseline")
+                    owner=self.map['parts'].get(requirement.owner,self.map['parts'][root])
+                    text=requirement.statement+'. '+'; '.join(f'{c.metric} {c.operator} {c.threshold} {c.unit}. Scope: {c.scope}' for c in requirement.contracts)
+                    fields={'customerId':requirement.id,'name':requirement.statement,'tiptapDocument':f'<p>{html.escape(text)}</p>',
+                        'status':'Incomplete','systems':[owner],'lifecycleStatus':'Baselined',
+                        'info':{'comment':json.dumps({'baseline':hardware.baseline_id,'origin':requirement.origin,'contracts':[c.model_dump() for c in requirement.contracts]})}}
+                    if requirement.id in previous_requirements:fields['id']=previous_requirements[requirement.id]['id'];operation='updateRequirement'
+                    else:fields['statement']=text;operation='addRequirement'
+                    ops.append(op(operation,**fields))
+                await self.write(connection,ops)
+                records=await self.confirmed(connection,'requirements',lambda rows:wanted.issubset({r.get('customerId') for r in rows}))
+                self.map['requirements']={r['customerId']:r['id'] for r in records if r.get('customerId') in wanted}
+                if len(self.map['requirements'])!=len(wanted):raise RuntimeError('Incomplete current requirements')
                 ops=[]
-                for key,part_id in self.map["parts"].items():
-                    linked=[self.map["requirements"][r.id] for r in hardware.requirements if r.owner==key]
-                    if linked:ops.append(op("updatePart",id=part_id,requirements=linked))
+                for key,id in self.map['parts'].items():
+                    ops.append(op('updatePart',id=id,requirements=[self.map['requirements'][r.id] for r in hardware.requirements if r.owner==key]))
                 for requirement in hardware.requirements:
-                    owner=self.map["parts"].get(requirement.owner,self.map["parts"][root])
-                    ops.append(op("addTestCase",name=f"OpenV / {requirement.id}",status="Planned",purpose=["Verification"],
-                        type="Other",customType="External engineering analysis / inspection",systems=[owner],
-                        requirements=[{"requirementId":self.map["requirements"][requirement.id],"rationale":"Independent evidence required by frozen contract"}],
-                        description=json.dumps([c.model_dump() for c in requirement.contracts]),
-                        procedure=["Resolve canonical design and provenance","Execute registered method","Admit metric only if input/method scope is valid","Compare with frozen threshold"],
-                        notes="Physical methods are unexecuted unless measurement evidence is supplied."))
-                await self.write(s,ops)
-                data=await self.search(s,["testCases"])
-                self.map["test_cases"]={t["name"].removeprefix("OpenV / "):t["id"] for t in data.get("testCases",[])}
-                if set(self.map["test_cases"])!=set(self.map["requirements"]):
-                    raise RuntimeError("Dalus verification plan read-back is incomplete")
-                await self.write(s,[op("updateRequirement",id=self.map["requirements"][r.id],verifications=[{
-                    "id":uuid(),"method":"test","testCaseId":self.map["test_cases"][r.id]}]) for r in hardware.requirements])
-                await self.assert_design(s,design)
-                await self.write(s,[op("updateVariable",id=self.map["marker"],value=f"defined:{design.id}",expression="")])
-                self.map["commit"]="defined";self.persist()
-                return self.public_ref()
+                    owner=self.map['parts'].get(requirement.owner,self.map['parts'][root])
+                    fields={'name':f'OpenV / {requirement.id}','status':'Planned','lifecycleStatus':'Baselined','purpose':['Verification'],
+                        'type':'Other','customType':'External engineering analysis / inspection','systems':[owner],
+                        'requirements':[{'requirementId':self.map['requirements'][requirement.id],'rationale':'Independent evidence required by frozen contract'}],
+                        'description':json.dumps([c.model_dump() for c in requirement.contracts]),
+                        'procedure':['Resolve canonical design and provenance','Execute registered method','Admit metric only if input/method scope is valid','Compare with frozen threshold'],
+                        'notes':'History is version-bound; current verdict requires new admitted evidence.'}
+                    if requirement.id in previous_cases:
+                        item=previous_cases[requirement.id];fields['id']=item['id'];operation='updateTestCase'
+                        self.map['test_runs'][requirement.id]=copy.deepcopy(item.get('runs',[]))
+                    else:operation='addTestCase'
+                    ops.append(op(operation,**fields))
+                await self.write(connection,ops)
+                records=await self.confirmed(connection,'testCases',lambda rows:wanted.issubset({r.get('name','').removeprefix('OpenV / ') for r in rows}))
+                self.map['test_cases']={r['name'].removeprefix('OpenV / '):r['id'] for r in records if r.get('name','').removeprefix('OpenV / ') in wanted}
+                await self.write(connection,[op('updateRequirement',id=self.map['requirements'][r.id],verifications=[{'id':uuid(),'method':'test','testCaseId':self.map['test_cases'][r.id]}]) for r in hardware.requirements])
+                await self.assert_design(connection,design)
+                await self.write(connection,[op('updateVariable',id=self.map['marker'],value=f'defined:{design.id}')])
+                self.map['commit']='defined';self.persist();return self.public_ref()
         return asyncio.run(create())
 
     async def assert_design(self,s,design):
+        for attempt in range(4):
+            try:return await self._assert_design_once(s,design)
+            except RuntimeError:
+                if attempt==3:raise
+                await asyncio.sleep(.5*(attempt+1))
+
+    async def _assert_design_once(self,s,design):
         result=await self.search(s,["variables"])
         records={v["id"]:v for v in result.get("variables",[])}
         values={id:v.get("value") for id,v in records.items()}
@@ -250,12 +332,10 @@ class DalusStore:
                     operations.append(op("updateRequirement",id=self.map["requirements"][key],
                         status={"PASS":"Complete","FAIL":"Failed","UNKNOWN":"Incomplete"}[status]))
                 await self.write(s,operations)
-                read=await self.search(s,["requirements"])
-                statuses={r["id"]:r["status"] for r in read.get("requirements",[])}
-                for evaluation in snapshot["evaluations"]:
-                    expected={"PASS":"Complete","FAIL":"Failed","UNKNOWN":"Incomplete"}[evaluation["status"]]
-                    if statuses.get(self.map["requirements"][evaluation["requirement_id"]])!=expected:
-                        raise RuntimeError("Dalus status read-back mismatch; commit remains incomplete")
+                expected_statuses={self.map["requirements"][e["requirement_id"]]:{"PASS":"Complete","FAIL":"Failed","UNKNOWN":"Incomplete"}[e["status"]] for e in snapshot["evaluations"]}
+                await self.confirmed(s,"requirements",lambda rows:all({r["id"]:r.get("status") for r in rows}.get(id)==status for id,status in expected_statuses.items()))
+                expected_runs={self.map["test_cases"][e["requirement_id"]]:self.map["test_runs"][e["requirement_id"]][-1]["id"] for e in snapshot["evaluations"]}
+                await self.confirmed(s,"testCases",lambda rows:all(any(run.get("id")==run_id for run in next((r.get("runs",[]) for r in rows if r["id"]==id),[])) for id,run_id in expected_runs.items()))
                 await self.write(s,[op("updateVariable",id=self.map["marker"],value=f"evaluated:{design.id}:{digest(snapshot)}",expression="")])
                 self.map["commit"]="evaluated";self.persist()
                 return self.public_ref()
