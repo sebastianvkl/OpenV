@@ -1390,3 +1390,8 @@ code {
 .flight-simulation {
   background: #dce6df;
 }
+@media (min-width: 761px) {
+  .canvas-wrap {
+    inset: 0;
+  }
+}

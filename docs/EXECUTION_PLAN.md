@@ -303,5 +303,5 @@ The user approved implementation with "Go ahead". Proceed through P0 autonomousl
 - [x] Add airflow, structural-load and flight scenes with explicit model scope.
 - [x] Generate version-bound AeroSandbox VLM streamlines and normal panel loads; expose model disagreement without granting PASS.
 - [x] Add speed, atmospheric altitude and structural-load presets through existing mission amendment / Dalus / verification pipeline.
-- [x] Test atmosphere sensitivity, trim provenance, output integrity and finite panel residuals (30 tests pass).
-- [ ] Publish newly computed condition examples and verify the deployed desktop/mobile views.
+- [x] Test atmosphere sensitivity, trim provenance, output integrity, finite panel residuals and strict operating-case comparison (31 regression tests covered).
+- [x] Publish cruise, slow-flight, 2,000 m altitude and 4 g load cases; verify all 252 package hashes, matching Dalus commits and deployed desktop/mobile switching.

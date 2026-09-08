@@ -54,3 +54,40 @@ waits removed. It is not a claim that the pipeline takes one minute. Credit
 preexisting Astra/OpenAI, Dalus, AeroSandbox, build123d/OpenCascade and frontend
 libraries; OpenV's pipeline, adapters, evidence handling and generated example
 are the new project work.
+
+## Realistic viewer and operating-condition comparisons
+
+Published on 2026-09-08. The viewer now uses material-specific printed, carbon,
+plywood and metal surfaces, cosmetic component-envelope labels, internal callouts,
+connection concepts, a detail camera and separate airflow, load-bench and flight
+scenes. Geometry remains the generated CAD. Wiring, fixture and terrain graphics
+are explicitly illustrative.
+
+Four verification-only branches preserve the exact sourced-component aircraft;
+these are independent checks of the earlier Astra proposal, not new Astra calls.
+Each branch was defined and evaluated through Dalus MCP. Each package contains
+63 verified file hashes, including the exact design's `simulation.json` diagnostic.
+
+| Case | Public run | Trim angle | Static margin | Spar tip | PASS / FAIL / UNKNOWN |
+| --- | --- | --- | --- | --- | --- |
+| 12 m/s, sea level, 2.5 g | [Cruise](https://openv-kohl.vercel.app/?run=run-11489fb9d56e) | 1.84° | 21.29% | 21.66 mm | 10 / 0 / 7 |
+| 8 m/s, sea level, 2.5 g | [Slow flight](https://openv-kohl.vercel.app/?run=run-9fd73d9de5d6) | 9.47° | 4.43% | 21.66 mm | 8 / 2 / 7 |
+| 12 m/s, 2,000 m, 2.5 g | [Altitude](https://openv-kohl.vercel.app/?run=run-b876623930b6) | 2.94° | 23.37% | 21.66 mm | 10 / 0 / 7 |
+| 12 m/s, sea level, 4 g | [Load](https://openv-kohl.vercel.app/?run=run-ca815bfb5566) | 1.84° | 21.29% | 34.66 mm | 10 / 0 / 7 |
+
+Slow flight fails both the 8° trim-angle limit and the 5% minimum static margin.
+The 4 g spar result is just inside the 35 mm deflection limit; this does not
+establish joint or full-airframe strength. Release is FAIL for slow flight and
+UNKNOWN for the other cases.
+
+VLM computes 160 panels and 45 streamlines per case, with finite no-penetration
+residuals below 1e-5. The panel colors represent normal force per area, not upper/
+lower surface pressure or CFD. VLM uses the recorded AeroBuildup trim without
+independent retrimming; the lift disagreement is shown. No visualization grants
+PASS. Old runs remain immutable and display no flow field unless they contain
+matching diagnostic data.
+
+The UI switches instantly to an existing case only when parameters, components,
+contracts and all other scenario inputs match. Otherwise presets remain drafts
+and use the existing mission-amendment pipeline. A browser check exercises the
+transition into a queued job without exposing stale scene results as recomputed.
