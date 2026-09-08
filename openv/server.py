@@ -72,7 +72,17 @@ def runs():
     for path in sorted(ARTIFACTS.glob("*/run.json"),key=lambda p:p.stat().st_mtime,reverse=True):
         try:
             d=json.loads(path.read_text())
-            records.append({k:d.get(k) for k in ("id","status","stage","provider","gate","current_design_id")})
+            item={k:d.get(k) for k in ("id","status","stage","provider","gate","current_design_id")}
+            hardware=d.get("system",{})
+            scenario=hardware.get("scenario",{})
+            version=next((v for v in d.get("versions",[]) if v["id"]==d.get("current_design_id")),None)
+            if version:
+                from openv.core import digest
+                item.update(scenario=scenario,visualization_file=d.get("visualization_file"),
+                    comparison_key=digest({"parameters":version["parameters"],
+                        "components":hardware.get("components"),"requirements":hardware.get("requirements"),
+                        "scenario":{k:v for k,v in scenario.items() if k not in ("cruise_mps","altitude_m","load_factor")}}))
+            records.append(item)
         except ValueError:
             continue
     return records[:50]

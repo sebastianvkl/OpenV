@@ -296,3 +296,12 @@ Plugin marketplaces/dynamic discovery and rich backend features; additional full
 ## Approval boundary
 
 The user approved implementation with "Go ahead". Proceed through P0 autonomously, preserving verification invariants and recording completed work and limitations.
+
+### User-requested visual realism and simulation environments
+
+- [x] Improve actual CAD presentation with material-specific shading, studio light, internal callouts and clearly labeled connection concepts.
+- [x] Add airflow, structural-load and flight scenes with explicit model scope.
+- [x] Generate version-bound AeroSandbox VLM streamlines and normal panel loads; expose model disagreement without granting PASS.
+- [x] Add speed, atmospheric altitude and structural-load presets through existing mission amendment / Dalus / verification pipeline.
+- [x] Test atmosphere sensitivity, trim provenance, output integrity and finite panel residuals (30 tests pass).
+- [ ] Publish newly computed condition examples and verify the deployed desktop/mobile views.

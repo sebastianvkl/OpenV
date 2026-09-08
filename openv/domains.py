@@ -21,6 +21,15 @@ class Domain(Protocol):
 class AircraftDomain:
     id="motor-glider/1"
 
+    def visualize(self, folder, context, evidence):
+        from openv.aircraft_visualization import flow_field
+        from openv.pipeline import write_json
+        aero = next((e for e in evidence if e.method == "aero"), None)
+        if aero is None:
+            return None
+        write_json(folder / "simulation.json", flow_field(context, aero))
+        return f"{folder.name}/simulation.json"
+
     def package(self,folder,hardware,design,artifacts):
         from openv.aircraft_package import write_package
         return write_package(folder,hardware,design,artifacts)

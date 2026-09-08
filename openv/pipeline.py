@@ -64,6 +64,10 @@ class Pipeline:
         self.state["gate"]=gate(hardware.requirements,evaluations).value
         snapshot={"design":design.model_dump(),"evidence":self.state["evidence"],
                   "evaluations":self.state["evaluations"],"gate":self.state["gate"]}
+        visualize = getattr(self.domain, "visualize", None)
+        if visualize:
+            snapshot["visualization_file"] = visualize(self.directory/design.id, context, evidence)
+            self.state["visualization_file"] = snapshot["visualization_file"]
         write_json(self.directory/design.id/"verification.json",snapshot)
         if self.store:
             self.state["dalus"]=self.store.record_verification(hardware,design,snapshot)
