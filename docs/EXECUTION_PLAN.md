@@ -354,6 +354,6 @@ Final deployed acceptance: `run-365c68904f40` reverified the unchanged Astra-rep
 - [x] Add Assemble → STEP CAD alongside Assembly guide, with CAD edges, isolation, exploded view, section cuts and matching assembly download.
 - [x] Add manufacturer reference photos for the selected motor, propeller, receiver and servo. Disclose purchased envelopes and missing vendor internals; no invented detailed vendor CAD.
 - [x] Unit-check hierarchy identity, duplicate/missing parts, wrong placement/units, nonfinite coordinates and malformed faces (four tests). Local browser acceptance imported all 45 parts, exercised specification links, isolation, custom part downloads, section cuts, guide navigation, cached revisits and mobile layout without JavaScript errors.
-- [ ] Verify final Vercel deployment, version switching and existing flight playback.
+- [x] Verify final Vercel deployment, version switching and existing flight playback. Production run `run-365c68904f40` loaded 45 parts / 2,320 CAD faces from its 11.7 MB STEP in 52.4 seconds. Browser checks passed for explosion, selection/specs, isolation, section cuts, guide navigation, cached return and mobile layout with no JavaScript errors. Local multi-version switching/cancellation and the existing computed-flight regression also passed.
 
 First local browser import took 48.6 seconds for the 11.6 MB fixture; cached revisits avoid parsing. Browser tessellation is presentation only and leaves requirements, Dalus and package evidence unchanged.
