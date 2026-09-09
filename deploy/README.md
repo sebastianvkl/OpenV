@@ -57,13 +57,13 @@ put keys/tokens in Git, cloud-init/user-data, public artifacts, or frontend code
 The service reads them on restart. Use separate OAuth credentials for independently
 running deployments; refresh-token rotation can invalidate duplicated sessions.
 
-The public demo must set `OPENV_READ_ONLY=1` in `/etc/openv.env` and leave
+If exposing this optional Python host as a recorded demo, set `OPENV_READ_ONLY=1` in `/etc/openv.env` and leave
 `OPENAI_API_KEY` empty. It serves recorded runs and artifacts, but every
 `POST /api/runs` is rejected with HTTP 403 before any worker or artifact write,
 including verification-only, fixture and repair requests. `/api/config` exposes
 this mode so the UI shows recorded examples and local setup instructions.
 Enforce the flag on the Python origin itself; hiding buttons or protecting only
-the Vercel URL is insufficient. The deployed public demo has no model API key.
+the Vercel URL is insufficient. The current static public demo does not run this service.
 
 A private service with `OPENV_READ_ONLY=0` runs one engineering process at a time, with daily admission,
 experiment, model-call, and wall-time limits. Configure these limits to match the
