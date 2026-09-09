@@ -389,4 +389,4 @@ First local browser import took 48.6 seconds for the 11.6 MB fixture; cached rev
 - [x] Replace the text glyph with an editable engineering-V SVG mark and wordmark; use it in the header, favicon and GitHub README.
 - [x] Apply navy, cool white and orange across the workbench, controls, story and CAD backdrop; retain distinct verification statuses and natural flight scenery. Refresh actual-app screenshots and the social card.
 - [x] Local browser checks passed desktop/mobile layout, failure/repair navigation, flight and full STEP import with no JavaScript errors.
-- [ ] Verify the final identity on the deployed site.
+- [x] Commit `85f864d` deployed on Vercel. Production browser checks confirmed the SVG logo, exact navy/orange control colors, decoded gallery assets, mobile layout without overflow and assembly navigation, with no JavaScript errors.
