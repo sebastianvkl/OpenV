@@ -372,7 +372,8 @@ First local browser import took 48.6 seconds for the 11.6 MB fixture; cached rev
 
 - [x] Replace the aspirational demo script with a timed one-minute shot list and a 120-word voiceover, using the actual Astra battery-repair run and the later unchanged-candidate flight/STEP example.
 - [x] Identify today's OpenV contributions, preserve recorded-run labeling and UNKNOWN scope, provide preloaded-tab setup, submission copy and the earlier-video fallback.
-- [ ] Record/edit the new submission video, check duration/audio/links, and submit through the event form. The recording plan does not mean a new video has been created or submitted.
+- [x] Record and edit the current battery-repair submission demo with narrated, captioned 1080p footage from the actual public runs. Verify the one-minute export, source scenes and audio/video streams.
+- [ ] Submit the project through the event form. Creating and publishing the video does not submit the form.
 
 
 ### Website and open-source repository presentation
@@ -390,3 +391,10 @@ First local browser import took 48.6 seconds for the 11.6 MB fixture; cached rev
 - [x] Apply navy, cool white and orange across the workbench, controls, story and CAD backdrop; retain distinct verification statuses and natural flight scenery. Refresh actual-app screenshots and the social card.
 - [x] Local browser checks passed desktop/mobile layout, failure/repair navigation, flight and full STEP import with no JavaScript errors.
 - [x] Commit `85f864d` deployed on Vercel. Production browser checks confirmed the SVG logo, exact navy/orange control colors, decoded gallery assets, mobile layout without overflow and assembly navigation, with no JavaScript errors.
+
+
+### Recorded submission video
+
+- [x] Capture actual browser interactions from `run-dcef3705d89d` and `run-365c68904f40`; omit loading/computation waits, retain evidence and UNKNOWN labels.
+- [x] Edit eight scenes into a one-minute 1080p H.264/AAC video with synthesized narration, burned-in captions, SRT sidecar and source manifest. Verify collision/repair, Dalus, computed flight and imported STEP frames.
+- [ ] Verify public video playback and share the download.

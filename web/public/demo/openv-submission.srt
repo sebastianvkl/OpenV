@@ -1,0 +1,39 @@
+1
+00:00:00,000 --> 00:00:06,000
+AI-generated hardware is a hypothesis.
+Recorded Astra run · computation time omitted
+
+2
+00:00:06,000 --> 00:00:14,000
+Independent solid geometry checks: TWO COLLISIONS
+Per mount: 10.45 mm³ static overlap · 130.63 mm³ insertion obstruction
+
+3
+00:00:14,000 --> 00:00:24,000
+Astra proposes: battery x 411.6 → 408.0 mm
+7 dependent evidence records invalidated
+
+4
+00:00:24,000 --> 00:00:30,000
+Fresh external verification: collisions cleared
+The LLM never decides PASS
+
+5
+00:00:30,000 --> 00:00:37,000
+Dalus through MCP · one persistent engineering model
+Captured requirements, parameters, tests and evidence
+
+6
+00:00:37,000 --> 00:00:45,000
+Computed power-loss response · AeroSandbox + SciPy
+Model prediction under stated assumptions · physical flight UNKNOWN
+
+7
+00:00:45,000 --> 00:00:54,000
+Actual STEP · 45 parts · sourced BOM · candidate build package
+Built today with Codex: OpenV pipeline, adapters and browser experience
+
+8
+00:00:54,000 --> 00:01:00,000
+16 modeled PASS · 0 FAIL · 8 UNKNOWN
+github.com/sebastianvkl/OpenV · openv-kohl.vercel.app

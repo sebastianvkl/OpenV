@@ -1712,7 +1712,7 @@ function App() {
           Generated is not verified.<span>Evidence makes the difference.</span>
           <a
             className="text-link"
-            href="/demo/openv-demo.mp4"
+            href="/demo/openv-submission.mp4"
             target="_blank"
             rel="noreferrer"
           >

@@ -1,0 +1,66 @@
+{
+  "title": "OpenV \u2014 AI-generated hardware is a hypothesis",
+  "recorded_at": "2026-09-09T00:52:40.178429+00:00",
+  "duration_seconds": 60.021333,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "fps": 30,
+  "narration": "Synthesized macOS Samantha voice; not a recording of the user",
+  "editing": "Actual browser footage; loading and computation waits omitted. Captions added. Historical version selection does not execute fresh verification.",
+  "sources": [
+    {
+      "run": "run-dcef3705d89d",
+      "role": "Actual Astra battery repair, evidence invalidation and captured Dalus record"
+    },
+    {
+      "run": "run-365c68904f40",
+      "role": "Later unchanged-candidate verification, computed power-loss diagnostic and 45-part STEP"
+    }
+  ],
+  "scope": "16 modeled PASS, 0 FAIL, 8 UNKNOWN. Physical flight and full manufacturing release remain unverified.",
+  "sha256": "06232bd099100d6230071799a6df43c5525507bf07778ee1cdfb03ce5f52c2e0",
+  "scenes": [
+    {
+      "name": "hypothesis",
+      "start_s": 0,
+      "duration_s": 6
+    },
+    {
+      "name": "failure",
+      "start_s": 6,
+      "duration_s": 8
+    },
+    {
+      "name": "experiment",
+      "start_s": 14,
+      "duration_s": 10
+    },
+    {
+      "name": "repair",
+      "start_s": 24,
+      "duration_s": 6
+    },
+    {
+      "name": "dalus",
+      "start_s": 30,
+      "duration_s": 7
+    },
+    {
+      "name": "flight",
+      "start_s": 37,
+      "duration_s": 8
+    },
+    {
+      "name": "cad",
+      "start_s": 45,
+      "duration_s": 9
+    },
+    {
+      "name": "verdict",
+      "start_s": 54,
+      "duration_s": 6
+    }
+  ]
+}

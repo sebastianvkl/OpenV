@@ -1,6 +1,6 @@
 # OpenV — one-minute submission demo
 
-Recording plan, 2026-09-08. This replaces the earlier aspirational demo sequence with demonstrated functionality. No new application implementation or engineering run is needed for this recording.
+Recording plan, 2026-09-08. This replaces the earlier aspirational demo sequence with demonstrated functionality. The recording is now produced at `web/public/demo/openv-submission.mp4`: approximately 60 seconds, 1920×1080, H.264/AAC, with synthesized Samantha narration and burned-in captions. A caption sidecar and source manifest accompany it. Public link: https://openv-kohl.vercel.app/demo/openv-submission.mp4 . The event form has not been submitted by this recording workflow. No new engineering run was created.
 
 ## Submission brief
 

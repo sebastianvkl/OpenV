@@ -8,7 +8,7 @@
 
 An open-source engineering pipeline that turns a hardware mission into a design, challenges it with independent tools, and uses the failure evidence to drive redesign.
 
-[**Explore the demo ↗**](https://openv-kohl.vercel.app) · [Watch a recorded demo](https://openv-kohl.vercel.app/demo/openv-demo.mp4) · [Get started](docs/GETTING_STARTED.md) · [Documentation](docs/README.md)
+[**Explore the demo ↗**](https://openv-kohl.vercel.app) · [Watch a recorded demo](https://openv-kohl.vercel.app/demo/openv-submission.mp4) · [Get started](docs/GETTING_STARTED.md) · [Documentation](docs/README.md)
 
 [![License: MIT](https://img.shields.io/badge/application-MIT-18344e?style=flat-square)](LICENSE)
 ![Python 3.12](https://img.shields.io/badge/Python-3.12-18344e?style=flat-square)
@@ -124,7 +124,7 @@ This is a **manufacturing candidate, not a flight release**. Endurance, full-air
 
 AeroSandbox analysis, build123d/OpenCascade geometry checks, Dalus MCP and the browser viewer are implemented. Native Onshape automation, RMFG integration and a fully verified physical aircraft are not. A STEP handoff can be imported into external CAD tools.
 
-The [recorded video](https://openv-kohl.vercel.app/demo/openv-demo.mp4) shows an earlier real Astra spar-redesign example. The linked installation and flight examples above include newer work. The [current recording plan](docs/DEMO_PLAN.md) describes the latest submission story.
+The [one-minute recorded demo](https://openv-kohl.vercel.app/demo/openv-submission.mp4) shows the actual Astra battery repair, evidence invalidation, captured Dalus record, computed power-loss response and imported STEP assembly. It includes synthesized narration and captions; recorded computation waits are omitted. See the [recording plan and evidence](docs/DEMO_PLAN.md).
 
 ## Contribute and license
 
