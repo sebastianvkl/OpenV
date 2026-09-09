@@ -188,6 +188,7 @@ function VTrace({ stage, gate, onClick }) {
 
 function App() {
   const [config, setConfig] = useState({});
+  const readOnly = config.read_only === true;
   const [runs, setRuns] = useState([]);
   const [runId, setRunId] = useState(
     () => new URLSearchParams(window.location.search).get("run") || "",
@@ -468,6 +469,7 @@ function App() {
   const installation = evidence.find((e) => e.method === "installation")?.output
     .raw;
   const submit = async (offline = false) => {
+    if (readOnly) return setError("This public demo shows recorded results. Run OpenV locally to create new designs.");
     setBusy(true);
     setError("");
     try {
@@ -493,6 +495,7 @@ function App() {
     setDrawer(true);
   };
   const runExperiment = async (repair = false) => {
+    if (readOnly) return setError("This public demo shows recorded results. Run OpenV locally to create new experiments.");
     setBusy(true);
     setError("");
     try {
@@ -552,6 +555,8 @@ function App() {
     if (cached) {
       setPerturbation({});
       chooseRun(cached.id);
+    } else if (readOnly) {
+      setError("This condition has no matching recorded result. Run OpenV locally to evaluate it; the displayed evidence is unchanged.");
     } else setPerturbation((p) => ({ ...p, ...changes }));
   };
   return (
@@ -679,15 +684,19 @@ function App() {
             {mode === "Explore"
               ? "From a mission to a design you can inspect. Every part has a purpose. Every claim needs evidence."
               : mode === "Simulate"
-                ? "Change the mission. Follow the forces. Let independent engineering tools challenge the design."
+                ? readOnly
+                  ? "Explore recorded simulations and their evidence. Run OpenV locally to evaluate your own changes."
+                  : "Change the mission. Follow the forces. Let independent engineering tools challenge the design."
                 : "One design, one set of parts, one assembly sequence. Open checks stay visible at every step."}
           </p>
-          <button className="primary" onClick={() => setMissionOpen(true)}>
+          {readOnly ? <a className="primary" href="?run=run-dcef3705d89d&view=fit&version=design-7e5e14a82ca4">
+            <Play size={16} /> Explore recorded repair <ArrowUpRight size={15} />
+          </a> : <button className="primary" onClick={() => setMissionOpen(true)}>
             <Plus size={16} />{" "}
             {run ? "Define a new mission" : "Start a mission"}
             <ArrowUpRight size={15} />
-          </button>
-          {mode === "Explore" && <a className="intro-demo-link" href="https://openv-kohl.vercel.app/?run=run-dcef3705d89d&view=fit&version=design-7e5e14a82ca4"><Play size={12} /> Follow a recorded repair <ArrowUpRight size={12} /></a>}
+          </button>}
+          {mode === "Explore" && <a className="intro-demo-link" href={readOnly ? "https://github.com/sebastianvkl/OpenV/blob/main/docs/GETTING_STARTED.md" : "?run=run-dcef3705d89d&view=fit&version=design-7e5e14a82ca4"}><Play size={12} /> {readOnly ? "Public demo · run your own locally" : "Follow a recorded repair"} <ArrowUpRight size={12} /></a>}
           <VTrace
             stage={run?.stage}
             gate={data?.gate}
@@ -1135,7 +1144,7 @@ function App() {
                     </p>
                     <button
                       className="primary"
-                      disabled={busy || config.busy || isRunning}
+                      disabled={readOnly || busy || config.busy || isRunning}
                       onClick={() => runExperiment(false)}
                     >
                       Run condition checks <ArrowRight size={12} />
@@ -1396,7 +1405,7 @@ function App() {
                 </div>
               </div>
               {environment !== "installation" && <Chart aero={aero} />}
-              {version && (
+              {version && !readOnly && (
                 <div className="experiment-controls">
                   <div className="panel-heading">
                     <span>WHAT IF YOU CHANGE…</span>
@@ -1509,7 +1518,7 @@ function App() {
                   </p>
                   <button
                     className="primary"
-                    disabled={busy || config.busy || isRunning}
+                    disabled={readOnly || busy || config.busy || isRunning}
                     onClick={() => runExperiment(false)}
                   >
                     Run checks <ArrowUpRight size={14} />
@@ -1517,7 +1526,7 @@ function App() {
                   <button
                     className="repair-button"
                     disabled={
-                      busy || config.busy || isRunning || !config.astra_ready
+                      readOnly || busy || config.busy || isRunning || !config.astra_ready
                     }
                     onClick={() => runExperiment(true)}
                   >
@@ -1770,7 +1779,7 @@ function App() {
           </button>
         </div>
       )}
-      {missionOpen && (
+      {missionOpen && !readOnly && (
         <div className="modal-backdrop" onClick={() => setMissionOpen(false)}>
           <section
             className="mission-modal"

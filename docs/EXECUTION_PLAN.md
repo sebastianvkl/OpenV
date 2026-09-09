@@ -398,3 +398,12 @@ First local browser import took 48.6 seconds for the 11.6 MB fixture; cached rev
 - [x] Capture actual browser interactions from `run-dcef3705d89d` and `run-365c68904f40`; omit loading/computation waits, retain evidence and UNKNOWN labels.
 - [x] Edit eight scenes into a one-minute 1080p H.264/AAC video with synthesized narration, burned-in captions, SRT sidecar and source manifest. Verify collision/repair, Dalus, computed flight and imported STEP frames.
 - [x] Public video deployed with commit `7f9cba5`. The downloaded SHA-256 matches the local export; Chrome decoded, played and sought the 1920×1080 video. Duration is 60.02 seconds, size 6.56 MB. Local and public links supplied; event submission remains separate.
+
+
+### Public demo credit protection
+
+- [x] Add a backend read-only admission guard covering every job path, before side effects; expose the mode to the viewer.
+- [x] Enable read-only mode on the deployed Python origin and remove the public service API key. Keep local engineering enabled.
+- [x] Replace public mission creation with recorded-repair navigation/local setup; hide paid experiment controls and preserve recorded analysis/CAD inspection.
+- [x] Thirteen service tests pass, including HTTP rejection of ordinary, fixture, verification-only and repair requests with no worker or filesystem writes.
+- [ ] Verify direct-origin and Vercel rejection, public browser controls and local run availability.

@@ -302,3 +302,10 @@ A further primary-source review found product photos/manuals/drawings for the se
 **Decision (user request, 2026-09-08):** Keep the interactive engineering workbench first, then add a read-only project story with an explicitly identified recorded Astra battery-repair case study. Historical failure links select the captured design and analysis scene; case-study metrics do not replace the current run's evidence. Use screenshots of the actual public candidate for the website and README, with image provenance recorded separately.
 
 Keep the current working source boundaries intact. Make the repository navigable through a concise README, dedicated setup guide, documentation index, source map and contribution templates. This presentation change neither writes engineering state nor changes verification semantics.
+
+
+## D048 — Public demo cannot launch engineering jobs
+
+**Decision (explicit user request, 2026-09-08):** Deploy the public Python origin with `OPENV_READ_ONLY=1` and no model API key in its service environment. Reject every run admission with HTTP 403 before credentials, budget checks, artifact writes or worker launch. This includes ordinary proposals, redesigns, verification-only requests and offline fixtures. GET inspection and artifact downloads remain available, including captured Dalus records.
+
+The backend advertises read-only mode; the browser replaces mission creation with recorded-repair navigation and local setup guidance, hides experiment controls and keeps unsupported/uncomputed conditions explicit. This is not a client-side spending control: direct origin requests are blocked too. Local installations remain run-enabled by default and use their own credentials. Public authentication and visitor-supplied billing are outside this change.

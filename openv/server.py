@@ -45,6 +45,10 @@ async def lifespan(app):
 app=FastAPI(title="OpenV engineering pipeline",lifespan=lifespan)
 
 
+def read_only():
+    return os.environ.get("OPENV_READ_ONLY", "0").strip().lower() in {"1", "true", "yes", "on"}
+
+
 class RunRequest(BaseModel):
     model_config=ConfigDict(extra="forbid")
     mission: str = Field(min_length=10,max_length=4000)
@@ -59,10 +63,11 @@ class RunRequest(BaseModel):
 @app.get("/api/config")
 def config():
     return {"model":os.environ.get("OPENV_MODEL","gpt-6-astra"),
-        "astra_ready":bool(os.environ.get("OPENAI_API_KEY")),
+        "read_only":read_only(),
+        "astra_ready":bool(os.environ.get("OPENAI_API_KEY")) and not read_only(),
         "dalus_authorized":(Path(os.environ.get("OPENV_AUTH_DIR",str(ROOT/".openv")))/"dalus-tokens.json").exists(),
         "store":os.environ.get("OPENV_STORE","local"),
-        "fixtures_enabled":os.environ.get("OPENV_ALLOW_FIXTURES")=="1",
+        "fixtures_enabled":os.environ.get("OPENV_ALLOW_FIXTURES")=="1" and not read_only(),
         "busy":active is not None and active.returncode is None}
 
 
@@ -104,6 +109,8 @@ async def create_run(request:RunRequest):
 
 async def admit_run(request:RunRequest):
     global active
+    if read_only():
+        raise HTTPException(403,"This public demo is read-only. Run OpenV locally with your own credentials to create engineering runs.")
     if active and active.returncode is None:
         raise HTTPException(409,"An engineering run is active. Please wait for it to finish.")
     if request.offline and os.environ.get("OPENV_ALLOW_FIXTURES")!="1":

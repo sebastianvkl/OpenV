@@ -20,6 +20,8 @@ Open http://127.0.0.1:8000. Native CAD generation and solver evaluation take sev
 
 The fixture's reference mission is a 150 g payload, 20-minute endurance target and 12 m/s cruise. It demonstrates actual failure, repair and dependent evidence invalidation. Targets are not guarantees; unsupported claims remain UNKNOWN.
 
+The hosted OpenV site is a read-only demo. Recorded CAD, evidence and simulations remain available. New runs require your own local installation and credentials. Set `OPENV_READ_ONLY=0` locally; public hosts should use `OPENV_READ_ONLY=1`.
+
 ## Use Astra
 
 Copy `.env.example` to `.env`, set `OPENAI_API_KEY` and a model available to your account via `OPENV_MODEL`, then run:

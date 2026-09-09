@@ -76,6 +76,8 @@ flowchart LR
     V -- Runtime / MCP --> M
 ```
 
+The hosted demo is read-only: visitors can inspect recorded results without launching jobs on the operator’s API account. To create a design or run new checks, use your own local installation and credentials.
+
 ## Run locally
 
 Python 3.12 and Node 20.19+ or 22.12+ are required. Native CAD/solver work takes several minutes.

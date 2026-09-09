@@ -15,6 +15,7 @@ def parent(tmp_path, monkeypatch):
     monkeypatch.setattr(server, 'ARTIFACTS', tmp_path)
     monkeypatch.setattr(server, 'active', None)
     monkeypatch.delenv('OPENAI_API_KEY', raising=False)
+    monkeypatch.setenv('OPENV_READ_ONLY', '0')
     hardware=system(Mission(text='Reference camera motor-glider mission'))
     design=initial_design(hardware,Parameters())
     data={'id':'parent', 'system':hardware.model_dump(), 'versions':[design.model_dump()],
@@ -26,6 +27,37 @@ def parent(tmp_path, monkeypatch):
     async def spawn(*args,**kwargs):return Process()
     monkeypatch.setattr(asyncio,'create_subprocess_exec',spawn)
     return data,tmp_path
+
+
+@pytest.mark.parametrize('payload', [
+    {'mission': 'Build a motor-glider'},
+    {'mission': 'Build a motor-glider', 'offline': True},
+    {'mission': 'Check this motor-glider', 'source_run_id': 'parent', 'verify_only': True},
+    {'mission': 'Repair this motor-glider', 'source_run_id': 'parent', 'parameter_changes': {'span_m': 1.7}},
+])
+def test_read_only_blocks_all_job_paths_before_side_effects(parent, monkeypatch, payload):
+    from fastapi.testclient import TestClient
+    monkeypatch.setenv('OPENV_READ_ONLY', '1')
+    monkeypatch.setenv('OPENAI_API_KEY', 'test-key-never-used')
+    monkeypatch.setenv('OPENV_ALLOW_FIXTURES', '1')
+    async def forbidden(*args, **kwargs):
+        pytest.fail('Read-only requests must never spawn a worker')
+    monkeypatch.setattr(asyncio, 'create_subprocess_exec', forbidden)
+    before=set(parent[1].rglob('*'))
+    with TestClient(server.app) as client:
+        response=client.post('/api/runs', json=payload)
+        assert response.status_code==403
+        assert 'read-only' in response.json()['detail']
+        config=client.get('/api/config').json()
+        assert config['read_only'] and not config['astra_ready'] and not config['fixtures_enabled']
+        assert client.get('/api/runs/parent').status_code==200
+        assert client.get('/api/runs').status_code==200
+    assert set(parent[1].rglob('*'))==before
+
+
+def test_local_runs_remain_enabled_by_default(monkeypatch):
+    monkeypatch.delenv('OPENV_READ_ONLY', raising=False)
+    assert server.config()['read_only'] is False
 
 
 def branch(parent, **changes):
