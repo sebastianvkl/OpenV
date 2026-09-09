@@ -382,3 +382,11 @@ First local browser import took 48.6 seconds for the 11.6 MB fixture; cached rev
 - [x] Rewrite the README around the working result, evidence boundaries, screenshots and quick start. Add a setup guide, documentation index, repository map, contribution guide and issue/PR templates.
 - [x] Validate five viewer tests, local desktop/mobile layout, screenshot assets, two recorded collisions and repaired-version navigation, flight playback and the actual 45-part STEP import. Markdown file links and issue-template YAML resolve.
 - [x] Publish and verify the refreshed production site and repository assets. Commit `949a015` deployed successfully to Vercel. Production browser checks passed desktop/mobile presentation, decoded screenshot assets, initial two-collision deep link, repaired-version navigation, computed flight and the actual STEP import, with no JavaScript errors. All four shared image files are present in the public GitHub repository.
+
+
+### Logo and color refresh
+
+- [x] Replace the text glyph with an editable engineering-V SVG mark and wordmark; use it in the header, favicon and GitHub README.
+- [x] Apply navy, cool white and orange across the workbench, controls, story and CAD backdrop; retain distinct verification statuses and natural flight scenery. Refresh actual-app screenshots and the social card.
+- [x] Local browser checks passed desktop/mobile layout, failure/repair navigation, flight and full STEP import with no JavaScript errors.
+- [ ] Verify the final identity on the deployed site.

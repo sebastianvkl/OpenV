@@ -558,7 +558,7 @@ function App() {
     <main>
       <header>
         <a href="/" className="brand">
-          <span className="brand-mark">∨</span>open
+          <img className="brand-logo" src="/brand/openv-mark.svg" alt="" width="43" height="43" />open
           <span className="brand-v">v</span>
           <span className="brand-tag">ENGINEERING, WITH EVIDENCE.</span>
         </a>

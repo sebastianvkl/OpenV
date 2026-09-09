@@ -757,12 +757,12 @@ export default function Scene({
     >
       {!flight && (
         <>
-          <color attach="background" args={[dark ? "#182c35" : "#edf0e8"]} />
-          <fog attach="fog" args={[dark ? "#182c35" : "#edf0e8", 5, 20]} />
+          <color attach="background" args={[dark ? "#182c35" : "#f0f3f8"]} />
+          <fog attach="fog" args={[dark ? "#182c35" : "#f0f3f8", 5, 20]} />
         </>
       )}
       <ambientLight intensity={flight ? 0.15 : dark ? 0.45 : 0.65} />
-      <hemisphereLight args={["#fff9e9", "#768879", flight ? 0 : 1.2]} />
+      <hemisphereLight args={["#f8fbff", "#7e8da3", flight ? 0 : 1.2]} />
       <directionalLight
         position={[-2, 4, 3]}
         intensity={flight ? 0 : 2}
@@ -888,8 +888,8 @@ export default function Scene({
           args={[
             5,
             50,
-            dark ? "#2e4650" : "#dde3d8",
-            dark ? "#243b45" : "#e4e9df",
+            dark ? "#2e4650" : "#dce3ec",
+            dark ? "#243b45" : "#e6ebf2",
           ]}
           position={[0, -0.115, 0]}
         />

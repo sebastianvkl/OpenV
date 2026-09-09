@@ -1,6 +1,6 @@
 <div align="center">
 
-# OpenV
+<img src="web/public/brand/openv-logo.svg" alt="OpenV" width="240" />
 
 ### AI-generated hardware is a hypothesis.
 
@@ -10,10 +10,10 @@ An open-source engineering pipeline that turns a hardware mission into a design,
 
 [**Explore the demo ↗**](https://openv-kohl.vercel.app) · [Watch a recorded demo](https://openv-kohl.vercel.app/demo/openv-demo.mp4) · [Get started](docs/GETTING_STARTED.md) · [Documentation](docs/README.md)
 
-[![License: MIT](https://img.shields.io/badge/application-MIT-315540?style=flat-square)](LICENSE)
-![Python 3.12](https://img.shields.io/badge/Python-3.12-315540?style=flat-square)
-![React + Three.js](https://img.shields.io/badge/viewer-React_%2B_Three.js-315540?style=flat-square)
-[![Dalus MCP](https://img.shields.io/badge/engineering_record-Dalus_MCP-315540?style=flat-square)](docs/GETTING_STARTED.md#connect-dalus-through-mcp)
+[![License: MIT](https://img.shields.io/badge/application-MIT-18344e?style=flat-square)](LICENSE)
+![Python 3.12](https://img.shields.io/badge/Python-3.12-18344e?style=flat-square)
+![React + Three.js](https://img.shields.io/badge/viewer-React_%2B_Three.js-18344e?style=flat-square)
+[![Dalus MCP](https://img.shields.io/badge/engineering_record-Dalus_MCP-18344e?style=flat-square)](docs/GETTING_STARTED.md#connect-dalus-through-mcp)
 
 [![OpenV showing the real 45-part aircraft candidate and its scoped verification results](web/public/images/hero.webp)](https://openv-kohl.vercel.app/?run=run-365c68904f40)
 
