@@ -70,4 +70,4 @@ Assemble → STEP CAD reads the actual exported STEP. The first import can take 
 
 The flight view interpolates version-bound point-mass solver samples where available. Historical examples without that artifact use an explicitly illustrative circuit. Neither presentation grants physical-flight verification.
 
-For hosting, see [deployment](../deploy/README.md). Vercel hosts the website; native CAD and solver jobs run on the separate Python host.
+For hosting, see [deployment](../deploy/README.md). Vercel hosts a static archive of the public examples. Native CAD and solver jobs run locally, or on your own optional private Python host.

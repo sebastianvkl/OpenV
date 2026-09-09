@@ -2,20 +2,63 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "installCommand": "npm ci --prefix web",
-  "buildCommand": "npm run build --prefix web",
+  "buildCommand": "npm run build:static --prefix web",
   "outputDirectory": "web/dist",
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "https://openv.3.92.144.120.sslip.io/api/:path*" },
-    { "source": "/artifacts/:path*", "destination": "https://openv.3.92.144.120.sslip.io/artifacts/:path*" }
-  ],
-  "headers": [
-    { "source": "/api/:path*", "headers": [
-      { "key": "Cache-Control", "value": "no-store" },
-      { "key": "x-vercel-enable-rewrite-caching", "value": "0" }
-    ] },
-    { "source": "/artifacts/:path*", "headers": [
-      { "key": "Cache-Control", "value": "no-store" },
-      { "key": "x-vercel-enable-rewrite-caching", "value": "0" }
-    ] }
+  "routes": [
+    {
+      "src": "^/api/.*$",
+      "methods": [
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE"
+      ],
+      "status": 403,
+      "dest": "/recorded/read-only.json"
+    },
+    {
+      "src": "^/api/config$",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "dest": "/recorded/config.json",
+      "headers": {
+        "Cache-Control": "public, max-age=0, must-revalidate"
+      }
+    },
+    {
+      "src": "^/api/runs$",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "dest": "/recorded/runs.json",
+      "headers": {
+        "Cache-Control": "public, max-age=0, must-revalidate"
+      }
+    },
+    {
+      "src": "^/api/runs/([A-Za-z0-9-]+)$",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "dest": "/recorded/runs/$1.json",
+      "headers": {
+        "Cache-Control": "public, max-age=3600"
+      }
+    },
+    {
+      "src": "^/artifacts/(.*)$",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "dest": "/artifacts/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=86400"
+      }
+    }
   ]
 }

@@ -1,4 +1,37 @@
-# Single-host deployment
+# Hosting OpenV
+
+## Current public demo: static hosting
+
+The public site uses Vercel Hobby and serves recorded files only. It requires no
+EC2 host, serverless functions, API keys, OAuth session or active engineering
+worker. Hobby usage caps still apply; free hosting is not unlimited bandwidth.
+
+`npm run build:static --prefix web` builds the viewer, downloads the public archive
+pinned in `deploy/static-demo.json`, checks its SHA-256 and each exported file,
+and places its 20 run snapshots and artifacts in `web/dist`. The large immutable
+archive is a GitHub Release asset, keeping generated geometry out of Git history.
+Normal `npm run build --prefix web` remains the local live-engineering build.
+
+Vercel routes the existing `/api/config`, `/api/runs` and `/api/runs/<id>` GET
+paths to static JSON. Write methods return 403 using static routing. Artifact
+paths stay unchanged. The viewer stops polling when `static_demo` is true.
+No route forwards requests to the retired AWS origin.
+
+For offline static builds, set `OPENV_STATIC_ARCHIVE` to a downloaded archive with
+the pinned checksum. To publish a new snapshot, run `deploy/export-static-demo.py`
+with a public artifact folder and its run-index JSON, then publish a new archive
+asset and update the metadata. The exporter includes only the same file types as
+the artifact API; credentials, operational logs and symlinks are excluded.
+Historical evidence and candidate-package bytes must be preserved.
+
+The AWS retirement backup is private local operator data, separate from the
+public archive. Do not commit or upload its OAuth/configuration files.
+
+## Optional private engineering host
+
+The following setup is retained for users who choose to pay for a server that
+executes native engineering tools. It is not required by the public demo.
+
 
 OpenV needs native CAD/solver libraries and bounded background execution. The
 reference deployment uses one Ubuntu 24.04 host with Python 3.12, systemd and
@@ -42,24 +75,10 @@ or deleted. Keep provider resource IDs in private operator records; the public
 repo contains no credentials or shared-infrastructure identifiers. Retain/download
 artifacts before deleting the host.
 
-## Vercel website
+## Connecting a private live website
 
-The user-selected website host is Vercel. The repository-root `vercel.json`
-installs/builds `web/` and serves `web/dist`. External rewrites forward API and
-artifact requests to the Python host; run polling is explicitly uncached.
-For a new installation, replace the two backend destinations in `vercel.json`
-with your HTTPS engineering API origin. Keep its job admission/time/resource
-limits enabled. Set `OPENV_PUBLIC_URL` on the Python host to the stable website
-URL after deployment, so new Dalus evidence references use the public site.
-
-Use `vercel login` and `vercel --prod` from the repository root, or import the
-repository with its Vite configuration. `.vercelignore` excludes local secrets,
-auth sessions, generated engineering artifacts and virtual environments. The
-frontend contains no Astra/Dalus credentials; live jobs use the backend's
-restricted environment and OAuth files.
-
-
-Do not expose a run-enabled service with the operator's credentials to anonymous
-visitors. Authentication or user-owned billing is a separate future feature.
-The local app uses its own `.env` and may keep engineering enabled; the public
-read-only flag is a deployment setting, not a hostname or browser-header check.
+The repository's Vercel configuration intentionally contains no live backend
+rewrites. A self-hosted live installation would need its own protected API origin,
+explicit routing, authentication and operator-managed budgets. Do not expose an
+anonymous run-enabled service with your API credentials. Local development on
+127.0.0.1 remains the supported way to run new experiments with your own account.

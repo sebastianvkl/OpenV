@@ -76,7 +76,7 @@ flowchart LR
     V -- Runtime / MCP --> M
 ```
 
-The hosted demo is read-only: visitors can inspect recorded results without launching jobs on the operator’s API account. To create a design or run new checks, use your own local installation and credentials.
+The hosted demo is a static site: visitors inspect recorded results without a running backend or model API account. To create a design or run new checks, use your own local installation and credentials.
 
 ## Run locally
 

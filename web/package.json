@@ -8,7 +8,8 @@
     "build": "vite build",
     "prebuild": "node scripts/prepare-cad.mjs",
     "predev": "node scripts/prepare-cad.mjs",
-    "test": "node --test src/step-model.test.mjs"
+    "test": "node --test src/step-model.test.mjs",
+    "build:static": "npm run build && node scripts/prepare-static-demo.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.0",

@@ -309,3 +309,10 @@ Keep the current working source boundaries intact. Make the repository navigable
 **Decision (explicit user request, 2026-09-08):** Deploy the public Python origin with `OPENV_READ_ONLY=1` and no model API key in its service environment. Reject every run admission with HTTP 403 before credentials, budget checks, artifact writes or worker launch. This includes ordinary proposals, redesigns, verification-only requests and offline fixtures. GET inspection and artifact downloads remain available, including captured Dalus records.
 
 The backend advertises read-only mode; the browser replaces mission creation with recorded-repair navigation and local setup guidance, hides experiment controls and keeps unsupported/uncomputed conditions explicit. This is not a client-side spending control: direct origin requests are blocked too. Local installations remain run-enabled by default and use their own credentials. Public authentication and visitor-supplied billing are outside this change.
+
+
+## D049 — Static public archive and AWS retirement
+
+**Decision (explicit user request to remove ongoing server cost, 2026-09-09):** Replace the public Python origin with an immutable static export on the existing Vercel Hobby project. Preserve all 20 published run IDs, design histories, public artifacts and candidate packages. Store the large compressed export as a public GitHub Release asset; pin its SHA-256 in the repository and verify individual file hashes during the static build. The private host/OAuth backup remains local and is never part of the public archive.
+
+Route existing API read paths to static JSON and reject writes at the CDN; no serverless function or external backend is needed. Disable polling for static snapshots. Keep the normal local application and optional private server workflow available for real engineering runs. This supersedes the public server deployment in D048 while retaining its no-public-spending policy. Verify the replacement with the origin stopped before terminating EC2 and deleting its disk. Historical evidence and verdicts remain unchanged. Free-tier usage caps still apply.

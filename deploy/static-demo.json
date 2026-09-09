@@ -1,0 +1,10 @@
+{
+  "sha256": "bacd8d282dee6785b81adff3512e5e97f7e7da7c3eec6d7569390f5e7b0d08e8",
+  "bytes": 148467173,
+  "file_count": 1082,
+  "uncompressed_bytes": 503004033,
+  "run_count": 20,
+  "url": "https://github.com/sebastianvkl/OpenV/releases/download/demo-archive-2026-09-09/openv-recorded-demo-20260909.tar.gz",
+  "captured_at": "2026-09-09",
+  "description": "Immutable public run snapshots and previously served artifacts; excludes host credentials and operational logs."
+}

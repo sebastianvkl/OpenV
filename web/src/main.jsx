@@ -289,6 +289,7 @@ function App() {
         ]);
         if (cancelled) return;
         setConfig(c);
+        if (c.static_demo) clearInterval(id);
         setRuns(r);
         setError((previous) =>
           /Failed to fetch|NetworkError/.test(previous) ? "" : previous,
@@ -338,12 +339,12 @@ function App() {
       }
     };
     tick();
-    const id = setInterval(tick, 1500);
+    const id = config.static_demo ? null : setInterval(tick, 1500);
     return () => {
       cancelled = true;
       clearInterval(id);
     };
-  }, [runId]);
+  }, [runId, config.static_demo]);
   const selectedVersion = versionId || run?.current_design_id;
   const version = run?.versions?.find((v) => v.id === selectedVersion);
   const geometryFile = version?.geometry_file;

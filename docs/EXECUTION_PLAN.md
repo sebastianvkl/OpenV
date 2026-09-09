@@ -407,3 +407,13 @@ First local browser import took 48.6 seconds for the 11.6 MB fixture; cached rev
 - [x] Replace public mission creation with recorded-repair navigation/local setup; hide paid experiment controls and preserve recorded analysis/CAD inspection.
 - [x] Thirteen service tests pass, including HTTP rejection of ordinary, fixture, verification-only and repair requests with no worker or filesystem writes.
 - [x] Verified four POST variants return 403 through both the direct origin and Vercel, with unchanged run lists. The public process has read-only enabled and no model API key. Production desktop/mobile checks passed repair navigation, recorded flight and actual STEP inspection with zero POST requests. The local mission UI remains available and its active worker was not restarted. Temporary operator SSH access was removed.
+
+
+### Static demo and removal of ongoing AWS costs
+
+- [x] Confirm the existing Vercel project uses Hobby. Back up the public server privately and verify 1,353 artifact/auth files against remote hashes.
+- [x] Export all 20 public runs without host credentials/logs; preserve public artifact bytes and publish a checksum-pinned archive.
+- [x] Add a static build, JSON read routes and CDN write rejection; stop polling immutable snapshots. Preserve local live engineering.
+- [x] Sixteen exporter/service tests pass, including preservation, private-file exclusion, symlink/traversal rejection and job admission controls. Static build verifies 1,081 exported file hashes.
+- [ ] Verify the deployed archive, historical repair, flight, STEP, downloads and API routes with the AWS origin stopped.
+- [ ] Terminate the dedicated EC2 instance, confirm disk deletion/IP release and verify the public site remains usable.
