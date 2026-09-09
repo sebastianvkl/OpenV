@@ -295,3 +295,10 @@ The unmodified LGPL-2.1 reader JS/WASM is served separately with its license, pi
 Persist at most two tessellations in browser IndexedDB. On page reload, download the selected STEP again, compute its SHA-256, and key reuse by that hash plus the pinned reader/version/settings revision. A URL match alone cannot admit a persistent cache entry. Cached meshes still undergo the existing identity/placement checks before frozen catalog metadata is attached. Failed source downloads cannot fall back to a ready cached model. Changed STEP bytes trigger parsing; unavailable browser storage falls back to ordinary import, and explicit retry bypasses stored meshes. Cache records are presentation data, not evidence.
 
 A further primary-source review found product photos/manuals/drawings for the selected EMAX and RadioMaster parts and spanwise geometry tables at https://www.apcprop.com/propeller-technical-data/. No exact, usable manufacturer STEP model was established for these selected purchased parts. Keep their existing labeled envelopes; do not reconstruct unspecified connectors, internals or blade surfaces and call them vendor CAD.
+
+
+## D047 — Public presentation and contributor entry points
+
+**Decision (user request, 2026-09-08):** Keep the interactive engineering workbench first, then add a read-only project story with an explicitly identified recorded Astra battery-repair case study. Historical failure links select the captured design and analysis scene; case-study metrics do not replace the current run's evidence. Use screenshots of the actual public candidate for the website and README, with image provenance recorded separately.
+
+Keep the current working source boundaries intact. Make the repository navigable through a concise README, dedicated setup guide, documentation index, source map and contribution templates. This presentation change neither writes engineering state nor changes verification semantics.

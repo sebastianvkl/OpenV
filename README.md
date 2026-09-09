@@ -1,93 +1,133 @@
+<div align="center">
+
 # OpenV
 
-**AI-generated hardware is a hypothesis.** OpenV runs the engineering V: intent → requirements → design → independent verification → failure → engineering experiment → redesign → evidence-backed status.
+### AI-generated hardware is a hypothesis.
 
-The first domain is a conventional electric RC motor-glider. Astra proposes; the runtime evaluates measurements from AeroSandbox, CAD geometry checks and deterministic calculations. Requirements use PASS / FAIL / UNKNOWN. Changing a design invalidates dependent evidence. Dalus is the live engineering system of record through MCP exclusively.
+**Astra proposes. Tools execute. Evidence decides.**
 
-[Public demo](https://openv-kohl.vercel.app) · [One-minute video](https://openv-kohl.vercel.app/demo/openv-demo.mp4) · [Execution status](docs/EXECUTION_PLAN.md)
+An open-source engineering pipeline that turns a hardware mission into a design, challenges it with independent tools, and uses the failure evidence to drive redesign.
 
-Published examples identify their proposer. Live Astra requires server credentials; an offline fixture is not an Astra run.
+[**Explore the demo ↗**](https://openv-kohl.vercel.app) · [Watch a recorded demo](https://openv-kohl.vercel.app/demo/openv-demo.mp4) · [Get started](docs/GETTING_STARTED.md) · [Documentation](docs/README.md)
 
-## Recorded engineering results
+[![License: MIT](https://img.shields.io/badge/application-MIT-315540?style=flat-square)](LICENSE)
+![Python 3.12](https://img.shields.io/badge/Python-3.12-315540?style=flat-square)
+![React + Three.js](https://img.shields.io/badge/viewer-React_%2B_Three.js-315540?style=flat-square)
+[![Dalus MCP](https://img.shields.io/badge/engineering_record-Dalus_MCP-315540?style=flat-square)](docs/GETTING_STARTED.md#connect-dalus-through-mcp)
 
-The [fresh public mission](https://openv-kohl.vercel.app/?run=run-38f998e18d41) ran actual Astra → Dalus MCP → CAD → verification → failure → Astra repair → re-verification. Excessive spar deflection prompted an 8-to-10 mm diameter change. The external calculation changed from 46.3 to 22.2 mm against a 32.5 mm limit. Five dependent evidence records were invalidated; unchanged electrical evidence was reused. The final ten modeled checks passed; eight requirements remained UNKNOWN.
+[![OpenV showing the real 45-part aircraft candidate and its scoped verification results](web/public/images/hero.webp)](https://openv-kohl.vercel.app/?run=run-365c68904f40)
 
-The [current installation example](https://openv-kohl.vercel.app/?run=run-dcef3705d89d) contains 45 CAD parts and 1.1494 kg modeled mass. Independent solid checks found the battery intersecting both tail-servo mounts and obstructing insertion. Astra moved it 3.6 mm forward; seven dependent evidence records were invalidated, and re-verification reached 16 PASS / 0 FAIL / 8 UNKNOWN. Both designs update the same persistent Dalus model, which retains the earlier test history. The [candidate package](https://openv-kohl.vercel.app/artifacts/run-dcef3705d89d/candidate-package.zip) includes STEP/STL, cut stock, sourced BOM, installation checks, connection schedule, assembly instructions and versioned evidence. All 68 manifest hashes were checked.
+*Actual application capture. 16 modeled checks pass; 8 requirements remain UNKNOWN. Physical flight is not verified.*
 
-The package is a manufacturing **candidate**, not a flight release. Unproven joints/retention, wiring and control installation, current demand, endurance and physical flight remain explicit unknowns. The [computed flight example](https://openv-kohl.vercel.app/?run=run-365c68904f40&view=flight) re-verifies that unchanged Astra-repaired design and provides bounded point-mass diagnostics for power loss, banking and crosswind; all 70 package hashes were checked. The 3D viewer plays solver samples; ideal attitude tracking and prescribed thrust are assumptions, not evidence of real flight.
+</div>
+
+## The problem
+
+AI can produce a convincing CAD model without proving that it fits, survives its loads, can be assembled, or meets the mission. OpenV closes that gap with an explicit engineering loop:
+
+**Intent → requirements → design → verify → fail → redesign → verify again.**
+
+Astra proposes requirements, designs and engineering experiments. External CAD checks, calculations and solvers produce evidence. Trusted deterministic comparisons decide **PASS / FAIL / UNKNOWN**. The LLM cannot grade its own work.
+
+## One real failure. One measured repair.
+
+The first reference system is **Albatross 01**, a small electric RC motor-glider. In an actual Astra run, the battery intersected both tail-servo mounts and obstructed insertion. Astra received those measurements and proposed a 3.6 mm forward move.
+
+| | Initial design | Re-verified design |
+|---|---:|---:|
+| Battery x position | 411.6 mm | 408.0 mm |
+| Battery / mount collision pairs | 2 | 0 |
+| Static overlap per mount | 10.45 mm³ | 0 mm³ |
+| Dependent evidence invalidated | — | 7 records |
+| Scoped component fit and insertion | FAIL | PASS |
+
+[**Inspect the failure**](https://openv-kohl.vercel.app/?run=run-dcef3705d89d&view=fit&version=design-7e5e14a82ca4) · [Inspect the repaired candidate](https://openv-kohl.vercel.app/?run=run-dcef3705d89d&view=fit)
+
+The result is **16 PASS / 0 FAIL / 8 UNKNOWN**. Both versions update the same persistent Dalus model through MCP, preserving the engineering history. A later verification of the unchanged repaired candidate adds computed flight-response diagnostics and a [candidate package with 70 verified artifact hashes](https://openv-kohl.vercel.app/artifacts/run-365c68904f40/candidate-package.zip).
+
+## Explore the output
+
+| Simulation | CAD and assembly |
+|---|---|
+| [![Computed aircraft response in the OpenV flight environment](web/public/images/flight.webp)](https://openv-kohl.vercel.app/?run=run-365c68904f40&view=flight) | [![The actual exported STEP assembly in the browser](web/public/images/assembly.webp)](https://openv-kohl.vercel.app/?run=run-365c68904f40&view=assemble) |
+| AeroSandbox-based airflow and point-mass flight diagnostics, structural-load views and explicit model assumptions. | Real STEP import, 45 named parts, explosion, section cuts, part isolation, CAD bounds, sourced specifications and assembly instructions. |
+
+Screenshots show the actual application and generated CAD. Flight scenery is illustrative; trajectories are model predictions. Purchased components currently use labeled envelopes, with manufacturer reference photos where available. [Image provenance](docs/images/README.md).
+
+## What makes the pipeline useful
+
+- **External verification:** geometry, engineering calculations and solvers supply the evidence; successful tool execution alone proves nothing.
+- **Automatic invalidation:** a design change makes dependent evidence stale; unchanged applicable evidence can be reused.
+- **Traceable experiments:** every redesign records its problem, hypothesis, change, expected effect and actual effect.
+- **Dalus through MCP:** requirements, architecture, parameters, interfaces, tests and evidence live in one persistent engineering model. An explicit local store supports account-free development.
+- **Consistent artifacts:** CAD, analysis and package outputs derive from the same versioned design state. CAD is an output, not the engineering authority.
+- **Replaceable adapters:** the aircraft is the first working reference domain. Other domains can reuse the orchestration, contracts, evidence evaluation and storage boundaries.
+
+```mermaid
+flowchart LR
+    I[Hardware mission] --> A[Astra proposal]
+    A --> D[Versioned design]
+    D --> T[External engineering tools]
+    T --> E[Evidence]
+    E --> V[Deterministic evaluation]
+    V --> S[PASS / FAIL / UNKNOWN]
+    V -- Failure evidence --> A
+    D -- Runtime / MCP --> M[(Dalus)]
+    V -- Runtime / MCP --> M
+```
 
 ## Run locally
 
-Python 3.12 and Node 20.19+ (or 22.12+) are required. CAD dependencies include native OpenCascade wheels.
+Python 3.12 and Node 20.19+ or 22.12+ are required. Native CAD/solver work takes several minutes.
 
 ```sh
+git clone https://github.com/sebastianvkl/OpenV.git
+cd OpenV
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e '.[test]'
-python -m pytest -q
-python -m openv.cli --offline --run-id first-example
-cd web
-npm ci
-npm run build
-cd ..
+npm ci --prefix web
+npm run build --prefix web
+OPENV_STORE=local python -m openv.cli --offline --run-id first-example
 uvicorn openv.server:app --host 127.0.0.1 --port 8000
 ```
 
-Open http://127.0.0.1:8000. The offline example runs actual CAD generation and engineering calculations with a **labeled deterministic fixture proposer**. It does not call Astra or decompose arbitrary mission text. Its reference mission is 150 g payload, 20 minutes and 12 m/s cruise. The fixture exposes installation interference and unavailable spar stock, changes placement and tube section, invalidates dependent evidence and verifies again.
+Open **http://127.0.0.1:8000**. The explicit offline proposer is a deterministic fixture; it runs real CAD and engineering checks but makes no Astra call. Use a new run ID for each execution.
 
-For Astra, copy `.env.example` to `.env`, set `OPENAI_API_KEY`, then:
+To use Astra, copy `.env.example` to `.env`, configure your key/model access, and run the CLI without `--offline`. To connect Dalus, run `python -m openv.dalus login` and configure the MCP store. See [Getting started](docs/GETTING_STARTED.md) for the full setup, development workflow and persistent-model configuration.
 
-```sh
-python -m openv.cli 'Build a conventional RC motor-glider carrying a 150 g camera for 20 minutes.'
+## Project structure
+
+```text
+openv/       Engineering loop, contracts, domain and tool adapters
+web/         React workbench, Three.js scenes and browser STEP reader
+tests/       Verification, invalidation, CAD and integration regressions
+docs/        Architecture, decisions, guides and current execution status
+deploy/      Python host and Vercel deployment setup
+.github/     Issue forms and contribution workflow
 ```
 
-No model can write verification status, change the verifier, or relax a frozen requirement. API/server runs are bounded. Public fixture execution is disabled unless `OPENV_ALLOW_FIXTURES=1` is explicitly set.
+Start in [`openv/pipeline.py`](openv/pipeline.py) for orchestration, [`openv/core.py`](openv/core.py) for the verification rules, and [`openv/dalus_store.py`](openv/dalus_store.py) for the persistent MCP record. The [repository map](docs/REPOSITORY_MAP.md) explains the remaining modules.
 
-## Dalus through MCP
+| Guide | Purpose |
+|---|---|
+| [Verification philosophy](docs/VERIFICATION_PHILOSOPHY.md) | Evidence, authority, invalidation and honest unknowns |
+| [Domain adapters](docs/DOMAIN_PACKS.md) | Add a verifier or hardware domain |
+| [Architecture and decisions](docs/DECISIONS.md) | Boundaries, tradeoffs and changes over time |
+| [Execution plan](docs/EXECUTION_PLAN.md) | Completed work and remaining scope |
+| [Contributing](CONTRIBUTING.md) | Development checks and useful contributions |
+| [Deployment](deploy/README.md) | Vercel website plus native Python engineering host |
 
-```sh
-python -m openv.dalus login
-```
+## Current scope
 
-Open the displayed OAuth URL. Tokens are stored in ignored `.openv/` files with restricted permissions. The client discovers the actual tools at `https://app.dalus.io/api/mcp`. Engineering writes must use discovered MCP capabilities; no REST/database bypass is provided. Set `OPENV_STORE=dalus` and `DALUS_TEAM_ID` in `.env` to use the live store. Requirements, components/variables, interfaces, test cases, evidence references and experiments are written through MCP and read back. An incomplete or mismatched remote commit blocks progress. `OPENV_STORE=local` is the explicit account-free fallback. Each hardware system uses one persistent Dalus model across runs. Keep `OPENV_AUTH_DIR/dalus-system.json` (or `OPENV_DALUS_MAPPING`) with the server state; it stores stable remote IDs, not a second engineering database. `OPENV_DALUS_MODEL_ID` optionally pins that model. To adopt an existing OpenV model, import its `dalus-mapping.json` into this path first; the adapter refuses an unmapped existing model. Updates serialize through a file lock, reset current verdicts before changing inputs and retain test history. Website artifacts remain immutable historical snapshots.
+This is a **manufacturing candidate, not a flight release**. Endurance, full-airframe strength, joints/retention, wiring/control installation and physical flight still need admissible evidence. The public mission schema and viewer are aircraft-specific. A minimal bracket regression demonstrates the generic runtime boundary; a second complete production domain is not implemented.
 
-## What exists now
+AeroSandbox analysis, build123d/OpenCascade geometry checks, Dalus MCP and the browser viewer are implemented. Native Onshape automation, RMFG integration and a fully verified physical aircraft are not. A STEP handoff can be imported into external CAD tools.
 
-- A small domain-independent verification engine, frozen contracts, versioned evidence, dependency fingerprints and experiments.
-- One shared CLI/service pipeline with Astra and explicit offline proposer adapters.
-- Parametric STEP/STL candidates and meshes from the same CAD geometry used for mass properties and aircraft analysis inputs.
-- AeroSandbox trim/static stability, idealized spar bending, cell-allocation compatibility, solid validity and print-envelope checks.
-- Explore / Simulate / Assemble viewer, historical design selection, raw evidence, experiment log and candidate-package downloads.
-- Simulation controls for wingspan, battery position and payload: verify an explicit change, or run checks and let Astra attempt repairs. A new run preserves the parent and its frozen requirements; payload changes explicitly amend the mission baseline.
-- Candidate BOM accounts for every modeled mass, including installation allowances; cut-stock parts include individual STEP files and dimensions. Packages include regeneration source and a hash manifest.
+The [recorded video](https://openv-kohl.vercel.app/demo/openv-demo.mp4) shows an earlier real Astra spar-redesign example. The linked installation and flight examples above include newer work. The [current recording plan](docs/DEMO_PLAN.md) describes the latest submission story.
 
-The current CAD package is **a candidate, not a complete manufacturing release**. Hinge/linkage selections, fastening/joints, exact remaining vendor selections, access checks and process calibration still need work. The candidate includes split control surfaces, spar bores, ribs, access hatches and mounting candidates. UIUC wind-tunnel data for the APC Thin Electric 8x4 supports a bounded exploratory power estimate when required thrust lies inside the measured range; missing motor/ESC efficiency and battery discharge evidence still keep endurance UNKNOWN. The beam model uses declared material assumptions and does not prove full-airframe strength. Physical flight validation remains UNKNOWN. See `geometry.json`, `manifest.json`, and `FABRICATION.md` in each package for its exact coverage.
+## Contribute and license
 
-## Architecture
+Independent verifiers, sourced component data, reproducible failing cases and better assembly checks are especially useful. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a change. Every new PASS needs evidence; missing information stays UNKNOWN.
 
-`openv/core.py` owns contracts and evaluation without aircraft formulas. `openv/aircraft.py` supplies the first domain's schema, reviewed methods and geometry mapping. `openv/cad.py` creates the manufacturing candidate. `openv/engineer.py` contains proposal-only model adapters. `openv/pipeline.py` is the public orchestration entry point. `openv/server.py` serves the same pipeline and its artifacts.
-
-A replacement verifier must declare its version, dependencies, units and admissible measurement scope. Replacing a tool changes evidence fingerprints; a successful call alone cannot make a requirement pass. Unsupported domains/claims remain explicit rather than inheriting aircraft methods.
-
-Read [AGENTS.md](AGENTS.md), [architecture](docs/ARCHITECTURE.md), [decisions](docs/DECISIONS.md), [verification philosophy](docs/VERIFICATION_PHILOSOPHY.md) and [execution plan](docs/EXECUTION_PLAN.md) for the source-of-truth design and remaining work.
-
-## License and provenance
-
-OpenV code is MIT licensed. Dalus and OpenAI are external services, not included in this repository. Dependency licenses remain their own. Manufacturer facts retain source links in the component catalog; estimated and assumed values are labeled. The example geometry is generated by this repository. The assembly-explorer reference inspired the interface; none of its assets were copied.
-
-## Interactive analysis environments
-
-The [computed cruise case](https://openv-kohl.vercel.app/?run=run-11489fb9d56e) adds actual VLM streamlines and panel normal loads to the sourced-component aircraft. In **Simulate**, switch between Airflow, Load bench and Flight, then select a computed operating condition. Presets reuse matching published results or prepare an explicit mission amendment for fresh checks. The [8 m/s case](https://openv-kohl.vercel.app/?run=run-9fd73d9de5d6) fails the trim-angle and minimum-static-margin requirements.
-
-The flow artifact is bound to the exact trim evidence, design and inputs and included in the candidate-package hash manifest. VLM is a coarse inviscid lifting-surface diagnostic; the UI exposes its disagreement with the AeroBuildup trim model. It is not CFD, a stall prediction or physical flight validation. Structural views use the recorded idealized spar calculation; flight scenery and wiring routes are illustrative. None of these rendering improvements changes a requirement verdict.
-
-The [animated 3D world](https://openv-kohl.vercel.app/?run=run-11489fb9d56e&view=flight) places the actual CAD aircraft in valley, coastal or mountain scenery. Choose Chase, Wing or Survey; pause, restart or change playback speed. Its prescribed circuit is illustrative and never supplies flight-verification evidence.
-
-
-## Inspect the assembly STEP
-
-Open the [45-part assembly](https://openv-kohl.vercel.app/?run=run-365c68904f40&view=assemble), then use **STEP CAD** under **Assemble**. The browser reads the exported STEP in a worker while keeping a labeled mesh preview visible. First import can take tens of seconds; the two most recent tessellations can also persist in browser storage. Reloading rechecks the downloaded STEP hash before reuse; unavailable or changed source files cannot silently reuse that cache. Select a part to inspect its frozen specifications and source/buy links, isolate or frame it, show CAD edges and XYZ bounds, hide individual parts from the searchable assembly list, explode the assembly or make an uncapped section cut. Dimension labels describe overall CAD extents, not manufacturing tolerances. Reset view restores all parts. **Assembly guide** retains the tools, hardware and sequence view.
-
-Custom parts show generated CAD detail. Purchased components currently use envelopes, with manufacturer reference photos where available; detailed vendor CAD and unmodeled connectors/internals are not included. Viewing a solid creates no new engineering evidence.
-
-The browser STEP reader is the separately loaded, unmodified `occt-import-js@0.0.23` (LGPL-2.1), prepared by `npm run build` or `npm run dev`. Its license and pinned upstream source/build link are served at `/cad-kernel/NOTICE.txt`. Compatible JS/WASM builds can replace the files in that directory. Run the viewer identity/placement checks with `npm test --prefix web`.
+OpenV application code is **[MIT licensed](LICENSE)**. Dependencies retain their own licenses. The separately loaded `occt-import-js@0.0.23` browser reader is LGPL-2.1; its source/build link and license are served at `/cad-kernel/NOTICE.txt`. Manufacturer facts and reference photos retain source attribution. Dalus and OpenAI are external services, not bundled products. The reference assembly explorer inspired the interaction; none of its assets were copied.

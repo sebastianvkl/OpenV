@@ -1,0 +1,17 @@
+name: Feature or integration
+description: Propose a useful hardware workflow, verifier or adapter.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Engineering problem
+      description: What hardware workflow or decision should this support?
+    validations:
+      required: true
+  - type: textarea
+    id: approach
+    attributes:
+      label: Proposed behavior
+      description: For a verifier, describe the external evidence source, units, assumptions and a known failing case. For a domain, describe the required tool and data adapters.
+    validations:
+      required: true

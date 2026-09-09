@@ -1,0 +1,23 @@
+name: Bug report
+description: Report a reproducible problem in the pipeline or viewer.
+title: "[Bug] "
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Include what you expected and what actually happened.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Commands or UI steps, platform and relevant versions. Add a public run/design ID if available. Do not include API keys, OAuth tokens or private engineering files.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and scope
+      description: Relevant logs, screenshots or verifier output. If a verdict seems wrong, include the requirement, method, inputs and expected status.

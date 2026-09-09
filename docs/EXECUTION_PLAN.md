@@ -373,3 +373,12 @@ First local browser import took 48.6 seconds for the 11.6 MB fixture; cached rev
 - [x] Replace the aspirational demo script with a timed one-minute shot list and a 120-word voiceover, using the actual Astra battery-repair run and the later unchanged-candidate flight/STEP example.
 - [x] Identify today's OpenV contributions, preserve recorded-run labeling and UNKNOWN scope, provide preloaded-tab setup, submission copy and the earlier-video fallback.
 - [ ] Record/edit the new submission video, check duration/audio/links, and submit through the event form. The recording plan does not mean a new video has been created or submitted.
+
+
+### Website and open-source repository presentation
+
+- [x] Refine the workbench typography, navigation and surfaces; add a responsive project story and a recorded failure/repair case study with version-specific links.
+- [x] Capture real public-candidate CAD and computed-flight screenshots; share these assets between the website and README and record their provenance.
+- [x] Rewrite the README around the working result, evidence boundaries, screenshots and quick start. Add a setup guide, documentation index, repository map, contribution guide and issue/PR templates.
+- [x] Validate five viewer tests, local desktop/mobile layout, screenshot assets, two recorded collisions and repaired-version navigation, flight playback and the actual 45-part STEP import. Markdown file links and issue-template YAML resolve.
+- [ ] Publish and verify the refreshed production site and repository assets.

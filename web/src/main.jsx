@@ -1,5 +1,6 @@
 import useStepModel from "./use-step-model.js";
 import { StepInspector } from "./step-inspector.jsx";
+import ProjectStory from "./project-story.jsx";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import Scene from "./scene.jsx";
@@ -31,6 +32,7 @@ import {
   X,
 } from "lucide-react";
 import "./style.css";
+import "./presentation.css";
 
 const url = (run, path) => `/artifacts/${run}/${path}`;
 const human = (s) => s?.replaceAll("-", " ") || "";
@@ -193,7 +195,7 @@ function App() {
   const [run, setRun] = useState(null);
   const [geometry, setGeometry] = useState(null);
   const [geometrySource, setGeometrySource] = useState(null);
-  const [versionId, setVersionId] = useState("");
+  const [versionId, setVersionId] = useState(() => new URLSearchParams(window.location.search).get("version") || "");
   const [historical, setHistorical] = useState(null);
   const [assemblyView, setAssemblyView] = useState("cad");
   const [cadEdges, setCadEdges] = useState(true),
@@ -206,7 +208,7 @@ function App() {
     [sectionZ, setSectionZ] = useState(0.03),
     [stepRetry, setStepRetry] = useState(0);
   const [mode, setMode] = useState(() =>
-    new URLSearchParams(window.location.search).get("view") === "flight"
+    ["flight", "fit", "airflow", "structure"].includes(new URLSearchParams(window.location.search).get("view"))
       ? "Simulate"
       : ["assemble", "step"].includes(
             new URLSearchParams(window.location.search).get("view"),
@@ -231,7 +233,7 @@ function App() {
   const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [perturbation, setPerturbation] = useState({});
-  const [environment, setEnvironment] = useState("flight");
+  const [environment, setEnvironment] = useState(() => ({ fit: "installation", airflow: "airflow", structure: "structure" })[new URLSearchParams(window.location.search).get("view")] || "flight");
   const [flightPlaying, setFlightPlaying] = useState(
     () => !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
@@ -655,9 +657,9 @@ function App() {
           <h1>
             {mode === "Explore" ? (
               <>
-                A hypothesis.
+                A design is
                 <br />
-                Made tangible.
+                a hypothesis.
               </>
             ) : mode === "Simulate" ? (
               <>
@@ -685,6 +687,7 @@ function App() {
             {run ? "Define a new mission" : "Start a mission"}
             <ArrowUpRight size={15} />
           </button>
+          {mode === "Explore" && <a className="intro-demo-link" href="https://openv-kohl.vercel.app/?run=run-dcef3705d89d&view=fit&version=design-7e5e14a82ca4"><Play size={12} /> Follow a recorded repair <ArrowUpRight size={12} /></a>}
           <VTrace
             stage={run?.stage}
             gate={data?.gate}
@@ -1758,6 +1761,7 @@ function App() {
           )}
         </div>
       </footer>
+      {mode === "Explore" && <ProjectStory />}
       {error && (
         <div className="toast" role="alert">
           <span>{error}</span>
