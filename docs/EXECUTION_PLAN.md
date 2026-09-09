@@ -406,4 +406,4 @@ First local browser import took 48.6 seconds for the 11.6 MB fixture; cached rev
 - [x] Enable read-only mode on the deployed Python origin and remove the public service API key. Keep local engineering enabled.
 - [x] Replace public mission creation with recorded-repair navigation/local setup; hide paid experiment controls and preserve recorded analysis/CAD inspection.
 - [x] Thirteen service tests pass, including HTTP rejection of ordinary, fixture, verification-only and repair requests with no worker or filesystem writes.
-- [ ] Verify direct-origin and Vercel rejection, public browser controls and local run availability.
+- [x] Verified four POST variants return 403 through both the direct origin and Vercel, with unchanged run lists. The public process has read-only enabled and no model API key. Production desktop/mobile checks passed repair navigation, recorded flight and actual STEP inspection with zero POST requests. The local mission UI remains available and its active worker was not restarted. Temporary operator SSH access was removed.
